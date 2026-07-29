@@ -11,6 +11,17 @@
       forAll = f: nixpkgs.lib.genAttrs systems
         (system: f nixpkgs.legacyPackages.${system});
     in {
+      packages = forAll (pkgs: {
+        default = pkgs.rustPlatform.buildRustPackage {
+          pname = "agrf";
+          version = "0.1.0";
+          src = self;
+          # Cargo.lock is committed, so deps resolve straight from it — no
+          # cargoHash to recompute on every dependency bump.
+          cargoLock.lockFile = ./Cargo.lock;
+        };
+      });
+
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [

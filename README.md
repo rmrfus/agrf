@@ -16,17 +16,40 @@ awk 'BEGIN{for(i=0;i<80;i++) printf "%.2f\n", 50+45*sin(i/6)}' | agrf -w 40 -H 3
 
 ## Install
 
-Rust project with a `flake` + `direnv` dev shell:
+### As a Nix package (flake)
+
+The flake exposes a `default` package — no clone needed:
 
 ```sh
-direnv allow            # puts cargo/rustc on PATH from the flake devShell
-cargo build --release   # binary at ./target/release/agrf
+nix run   github:rmrfus/agrf -- 3 7 2 9   # run without installing
+nix build github:rmrfus/agrf              # ./result/bin/agrf
+nix profile install github:rmrfus/agrf    # install into your profile
 ```
 
-No `direnv`? Use the flake directly: `nix develop -c cargo build --release`.
+Pull it into a NixOS / home-manager flake as an input:
 
-To put `agrf` on your `PATH` (so the examples below work verbatim):
-`cargo install --path .`
+```nix
+inputs.agrf.url = "github:rmrfus/agrf";
+# then, where inputs + pkgs are in scope:
+environment.systemPackages = [ inputs.agrf.packages.${pkgs.system}.default ];
+# home-manager: home.packages = [ inputs.agrf.packages.${pkgs.system}.default ];
+```
+
+### With Cargo
+
+On any host with a Rust toolchain, no Nix required (builds locally):
+
+```sh
+cargo install --git https://github.com/rmrfus/agrf --locked
+```
+
+### From a local checkout
+
+```sh
+direnv allow            # cargo/rustc from the flake devShell (or: nix develop)
+cargo build --release   # ./target/release/agrf
+cargo install --path .  # or drop it onto your PATH
+```
 
 ## Usage
 
