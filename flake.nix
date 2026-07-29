@@ -14,7 +14,8 @@
       packages = forAll (pkgs: {
         default = pkgs.rustPlatform.buildRustPackage {
           pname = "agrf";
-          version = "0.1.0";
+          # Read straight from Cargo.toml so the two never drift apart.
+          version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
           src = self;
           # Cargo.lock is committed, so deps resolve straight from it — no
           # cargoHash to recompute on every dependency bump.
