@@ -44,12 +44,11 @@ cargo install --git https://github.com/rmrfus/agrf --locked
 ### Prebuilt binaries
 
 Static musl binaries for x86_64 / aarch64 / armv7 hang off each
-[release](https://github.com/rmrfus/agrf/releases). They ship gzip'd (so the
-executable bit is lost) — gunzip and restore it:
+[release](https://github.com/rmrfus/agrf/releases):
 
 ```sh
-curl -fsSL https://github.com/rmrfus/agrf/releases/latest/download/agrf-x86_64-linux.gz \
-  | gunzip > agrf && chmod +x agrf
+curl -fsSL https://github.com/rmrfus/agrf/releases/latest/download/agrf-x86_64-linux.tar.gz | tar xz
+./agrf --version
 ```
 
 Checksums are in `SHA256SUMS` on the same release.

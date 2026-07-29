@@ -58,13 +58,17 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # gzip -n keeps the archive reproducible (no name/mtime in the header).
+      # tar preserves the exec bit that upload-artifact and bare gzip drop.
       # Loop + glob so adding a target means editing only the build matrix.
-      - name: Compress and checksum
+      - name: Package and checksum
         working-directory: dist
         run: |
-          for f in agrf-*; do gzip -9 -n "$f"; done
-          sha256sum -- *.gz > SHA256SUMS
+          for f in agrf-*; do
+            install -m755 "$f" agrf
+            tar -czf "$f.tar.gz" agrf
+            rm -f agrf "$f"
+          done
+          sha256sum -- *.tar.gz > SHA256SUMS
           ls -la
 
       - name: Publish release
@@ -74,6 +78,6 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --title "${GITHUB_REF_NAME}" \
             --generate-notes \
-            dist/*.gz dist/SHA256SUMS
+            dist/*.tar.gz dist/SHA256SUMS
         env:
           GH_TOKEN: ${{ github.token }}

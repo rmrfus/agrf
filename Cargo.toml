@@ -1,6 +1,6 @@
 [package]
 name = "agrf"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Stream of int/float to unicode braille graphs"
 license = "MIT"
