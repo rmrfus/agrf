@@ -1,5 +1,9 @@
 # agrf
 
+[![CI](https://github.com/rmrfus/agrf/actions/workflows/ci.yml/badge.svg)](https://github.com/rmrfus/agrf/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/rmrfus/agrf?logo=github)](https://github.com/rmrfus/agrf/releases/latest)
+[![License](https://img.shields.io/github/license/rmrfus/agrf)](LICENSE)
+
 Turn a stream of numbers into a compact braille unicode graph, right in the
 terminal. Reads `int`/`float` from stdin (or positional args), draws a
 sparkline / bar chart using braille dots (U+2800) — 8 pixels per character,
