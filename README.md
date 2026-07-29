@@ -27,6 +27,7 @@ Pull it into a NixOS / home-manager flake as an input:
 
 ```nix
 inputs.agrf.url = "github:rmrfus/agrf";
+inputs.agrf.inputs.nixpkgs.follows = "nixpkgs";   # reuse your nixpkgs, not agrf's pin
 # then, where inputs + pkgs are in scope:
 environment.systemPackages = [ inputs.agrf.packages.${pkgs.system}.default ];
 # home-manager: home.packages = [ inputs.agrf.packages.${pkgs.system}.default ];
@@ -39,6 +40,19 @@ On any host with a Rust toolchain, no Nix required (builds locally):
 ```sh
 cargo install --git https://github.com/rmrfus/agrf --locked
 ```
+
+### Prebuilt binaries
+
+Static musl binaries for x86_64 / aarch64 / armv7 hang off each
+[release](https://github.com/rmrfus/agrf/releases). They ship gzip'd (so the
+executable bit is lost) — gunzip and restore it:
+
+```sh
+curl -fsSL https://github.com/rmrfus/agrf/releases/latest/download/agrf-x86_64-linux.gz \
+  | gunzip > agrf && chmod +x agrf
+```
+
+Checksums are in `SHA256SUMS` on the same release.
 
 ### From a local checkout
 
@@ -57,13 +71,13 @@ agrf [OPTIONS] [VALUES]...
 Values come from positional args if given, otherwise from stdin
 (whitespace/newline separated).
 
-| Flag              | Default | Meaning                                                       |
-|-------------------|---------|---------------------------------------------------------------|
-| `[VALUES]...`     | —       | numbers to plot; if omitted, read from stdin                  |
-| `-w, --width <N>` | `20`    | width in characters (holds `2*N` values)                      |
-| `-H, --height <N>`| `1`     | height in characters (4 px per char)                          |
-| `-m, --max <F>`   | auto    | Y-axis top; values above are clamped. Default: window max     |
-| `-p, --point`     | off     | draw only the marker at each value, no fill (default: bars)   |
+| Flag               | Default | Meaning                                                     |
+|--------------------|---------|-------------------------------------------------------------|
+| `[VALUES]...`      | —       | numbers to plot; if omitted, read from stdin                |
+| `-w, --width <N>`  | `20`    | width in characters (holds `2*N` values)                    |
+| `-H, --height <N>` | `1`     | height in characters (4 px per char)                        |
+| `-m, --max <F>`    | auto    | Y-axis top; values above are clamped. Default: window max   |
+| `-p, --point`      | off     | draw only the marker at each value, no fill (default: bars) |
 
 Behavior worth knowing:
 

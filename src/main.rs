@@ -1,4 +1,4 @@
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 
 use clap::Parser;
 
@@ -10,7 +10,7 @@ use render::Opts;
 /// Reads whitespace-separated numbers from positional args (if any) or stdin
 /// and draws them as a compact braille sparkline/barchart.
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
+#[command(version, about, long_about = None, allow_negative_numbers = true)]
 struct Args {
     /// Values to plot; if omitted, read from stdin (whitespace-separated).
     values: Vec<String>,
@@ -35,6 +35,14 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
+    // Bound the grid at the input boundary so render can't overflow usize or
+    // attempt an absurd allocation on a fat-fingered -w/-H.
+    const MAX_DIM: usize = 100_000;
+    if args.width > MAX_DIM || args.height > MAX_DIM {
+        eprintln!("agrf: --width/--height must be <= {MAX_DIM}");
+        std::process::exit(2);
+    }
+
     let input = if args.values.is_empty() {
         let mut buf = String::new();
         if let Err(e) = io::stdin().read_to_string(&mut buf) {
@@ -54,5 +62,17 @@ fn main() {
         point: args.point,
     };
 
-    print!("{}", render::render(&values, &opts));
+    // Write directly so a closed pipe (e.g. `agrf | head`) exits cleanly
+    // instead of panicking — the print! macro unwraps the EPIPE write error.
+    let out = render::render(&values, &opts);
+    let mut stdout = io::stdout().lock();
+    let res = stdout
+        .write_all(out.as_bytes())
+        .and_then(|()| stdout.flush());
+    if let Err(e) = res {
+        if e.kind() != io::ErrorKind::BrokenPipe {
+            eprintln!("agrf: {e}");
+            std::process::exit(1);
+        }
+    }
 }

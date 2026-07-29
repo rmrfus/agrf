@@ -1,8 +1,9 @@
 {
   description = "agrf — stream of numbers to braille unicode graphs";
 
-  # Indirect ref: resolves through the local flake registry, reusing the
-  # system's already-realised nixpkgs store path (no tarball download).
+  # Indirect ref: on a machine whose flake registry already has nixpkgs
+  # realised (e.g. the author's), this reuses that store path. Consumers get
+  # whatever the lock pins — override with inputs.agrf.inputs.nixpkgs.follows.
   inputs.nixpkgs.url = "flake:nixpkgs";
 
   outputs = { self, nixpkgs }:
