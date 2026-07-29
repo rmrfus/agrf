@@ -5,14 +5,11 @@ terminal. Reads `int`/`float` from stdin (or positional args), draws a
 sparkline / bar chart using braille dots (U+2800) — 8 pixels per character,
 so a lot of signal fits in very little width.
 
-```
-⠀⢀⣴⣾⣿⣿⣶⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣾⣿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠
-⣴⣿⣿⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣄⣀⣀⣀⣤⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⣄⣀⣀⣀⣴⣾⣿⣿⣿
-```
-```sh
-awk 'BEGIN{for(i=0;i<80;i++) printf "%.2f\n", 50+45*sin(i/6)}' | agrf -w 40 -H 3
-```
+![agrf — braille graphs in the terminal](assets/demo.png)
+
+> Real terminal output. Braille needs a monospace font that renders U+2800
+> properly (any decent terminal font does) — GitHub's web font doesn't, which
+> is why the graphs here are a screenshot, not copy-pasteable text.
 
 ## Install
 
@@ -82,53 +79,25 @@ Behavior worth knowing:
 
 ## Examples
 
-Real-world: ping latency as a sparkline.
+The screenshot above covers `seq`, a sine wave (bars and point mode), and
+positional input with a gap. A few more ways to feed it:
 
-```
-⣄⣦⣶⣴⣤⣷⣤⣶⣀⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-```
+Ping latency as a sparkline:
+
 ```sh
 ping -c 20 1.1.1.1 | grep -oP 'time=\K[0-9.]+' | agrf -w 20 -H 2
 ```
 
-Noise from `/dev/urandom` (uniform bytes 0–255) as bars.
+Noise from `/dev/urandom` (uniform bytes 0–255) as bars:
 
-```
-⣀⣠⣄⣀⣀⣠⣸⣰⣶⣤⣠⣆⣄⣧⣄⣇⣀⣰⣆⣰
-```
 ```sh
 head -c 40 /dev/urandom | od -An -tu1 -v | tr -s ' ' '\n' | grep . | agrf -w 20
 ```
 
-A random walk, two chars tall.
+A random walk, two chars tall:
 
-```
-⣀⣀⣠⣄⣄⣤⣤⣴⣿⣶⣾⣿⣿⣿⣿⣾⣶⣿⣿⣷⣿⣷⣾⣿⣿⣿⣷⣿⣷⣾
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-```
 ```sh
 awk 'BEGIN{x=50;for(i=0;i<60;i++){x+=int(rand()*21)-10;if(x<0)x=0;if(x>100)x=100;print x}}' | agrf -w 30 -H 2
-```
-
-Point mode (`-p`) traces the curve instead of filling under it.
-
-```
-⠀⢀⠔⠊⠉⠉⠑⠢⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⠔⠊⠉⠉⠒⠤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠
-⠊⠁⠀⠀⠀⠀⠀⠀⠈⠑⢄⠀⠀⠀⠀⠀⠀⢀⡠⠊⠀⠀⠀⠀⠀⠀⠀⠈⠢⢄⠀⠀⠀⠀⠀⠀⢀⠤⠊⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠑⠢⠤⠤⠤⠒⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠑⠢⠤⠤⠤⠒⠁⠀⠀⠀
-```
-```sh
-awk 'BEGIN{for(i=0;i<80;i++) printf "%.2f\n", 50+45*sin(i/6)}' | agrf -w 40 -H 3 -p
-```
-
-Positional args, with a non-numeric token dropped to a gap (the `x`).
-
-```
-⣰⣸⢠⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-```
-```sh
-agrf 3 7 2 9 x 5 8 1
 ```
 
 ## License
