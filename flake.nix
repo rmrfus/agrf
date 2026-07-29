@@ -20,6 +20,10 @@
           # Cargo.lock is committed, so deps resolve straight from it — no
           # cargoHash to recompute on every dependency bump.
           cargoLock.lockFile = ./Cargo.lock;
+
+          postInstall = ''
+            install -Dm644 man/man1/agrf.1 $out/share/man/man1/agrf.1
+          '';
         };
       });
 
