@@ -3,6 +3,8 @@ name = "agrf"
 version = "0.3.0"
 edition = "2021"
 description = "Stream of int/float to unicode braille graphs"
+homepage = "https://github.com/rmrfus/agrf"
+repository = "https://github.com/rmrfus/agrf"
 license = "MIT"
 
 [dependencies]

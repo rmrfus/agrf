@@ -40,10 +40,15 @@ fn main() {
     let args = Args::parse();
 
     // Bound the grid at the input boundary so render can't overflow usize or
-    // attempt an absurd allocation on a fat-fingered -w/-H.
-    const MAX_DIM: usize = 100_000;
-    if args.width > MAX_DIM || args.height > MAX_DIM {
-        eprintln!("agrf: --width/--height must be <= {MAX_DIM}");
+    // allocate absurdly. Capping the product covers both a huge single side and
+    // a huge width*height together (either way ~4M cells is far past any tty).
+    const MAX_CELLS: usize = 4_000_000;
+    if args
+        .width
+        .checked_mul(args.height)
+        .is_none_or(|c| c > MAX_CELLS)
+    {
+        eprintln!("agrf: width*height must be <= {MAX_CELLS}");
         std::process::exit(2);
     }
 
