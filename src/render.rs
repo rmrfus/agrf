@@ -23,6 +23,7 @@ const BIT: [[u8; 2]; 4] = [
 pub struct Opts {
     pub width: usize,
     pub height: usize,
+    pub min: Option<f64>,
     pub max: Option<f64>,
     pub point: bool,
 }
@@ -55,19 +56,18 @@ pub fn render(values: &[Option<f64>], opts: &Opts) -> String {
         values
     };
 
-    // Y scale: explicit --max, else the window's max (negatives count as 0).
-    // Clamped to >= 0 so a degenerate scale just yields an empty/baseline graph.
+    // Y range [ymin, ymax]: ymin defaults to 0, ymax to the window's peak.
+    // Values outside the range clamp to it. A non-positive or non-finite span
+    // (no data, or min >= max) is degenerate -> empty/baseline graph.
+    let ymin = opts.min.unwrap_or(0.0);
     let ymax = opts.max.unwrap_or_else(|| {
         window
             .iter()
-            .filter_map(|v| v.map(|x| x.max(0.0)))
-            .fold(0.0, f64::max)
+            .filter_map(|v| *v)
+            .fold(f64::NEG_INFINITY, f64::max)
     });
-    let ymax = if ymax.is_finite() && ymax > 0.0 {
-        ymax
-    } else {
-        0.0
-    };
+    let span = ymax - ymin;
+    let scaled = span.is_finite() && span > 0.0;
 
     // Pixel grid, row 0 = top.
     let mut grid = vec![vec![false; cols_px]; rows_px];
@@ -77,22 +77,22 @@ pub fn render(values: &[Option<f64>], opts: &Opts) -> String {
             Some(v) => *v,
             None => continue, // gap: leave the column empty
         };
-        // Negatives clamp to 0; anything above ymax clamps to ymax.
-        let frac = if ymax > 0.0 {
-            v.clamp(0.0, ymax) / ymax
+        // Clamp into [ymin, ymax] and map to a 0..1 fraction of the range.
+        let frac = if scaled {
+            (v.clamp(ymin, ymax) - ymin) / span
         } else {
             0.0
         };
 
         if opts.point {
-            // Single marker: 0 -> bottom pixel row, ymax -> top pixel row.
+            // Single marker: ymin -> bottom pixel row, ymax -> top pixel row.
             let up = (frac * (rows_px - 1) as f64).round() as usize;
             let row = rows_px - 1 - up.min(rows_px - 1);
             grid[row][c] = true;
         } else {
-            // Bar: fill from the bottom. Any positive value shows >= 1 pixel.
+            // Bar: fill from the bottom. Any value above the floor shows >= 1 px.
             let mut px = (frac * rows_px as f64).round() as usize;
-            if ymax > 0.0 && v > 0.0 && px == 0 {
+            if scaled && v > ymin && px == 0 {
                 px = 1;
             }
             for k in 0..px.min(rows_px) {
@@ -129,8 +129,19 @@ mod tests {
         Opts {
             width,
             height,
+            min: None,
             max,
             point,
+        }
+    }
+
+    fn band(min: f64, max: f64) -> Opts {
+        Opts {
+            width: 1,
+            height: 1,
+            min: Some(min),
+            max: Some(max),
+            point: false,
         }
     }
 
@@ -222,5 +233,19 @@ mod tests {
     fn empty_input_yields_blank_grid() {
         let out = render(&[], &o(3, 1, None, false));
         assert_eq!(out, "⠀⠀⠀\n");
+    }
+
+    #[test]
+    fn min_shifts_the_floor() {
+        // Range [40, 60]: 40 sits on the floor (empty), 50 half, 60 full.
+        assert_eq!(render(&[Some(40.0), Some(40.0)], &band(40.0, 60.0)), "⠀\n");
+        assert_eq!(render(&[Some(50.0), Some(50.0)], &band(40.0, 60.0)), "⣤\n");
+        assert_eq!(render(&[Some(60.0), Some(60.0)], &band(40.0, 60.0)), "⣿\n");
+    }
+
+    #[test]
+    fn below_min_clamps_to_floor() {
+        // 30 is below the floor of 40 -> clamps to the floor -> empty.
+        assert_eq!(render(&[Some(30.0), Some(30.0)], &band(40.0, 60.0)), "⠀\n");
     }
 }

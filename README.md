@@ -79,7 +79,8 @@ Values come from positional args if given, otherwise from stdin
 | `[VALUES]...`      | —       | numbers to plot; if omitted, read from stdin                |
 | `-w, --width <N>`  | `20`    | width in characters (holds `2*N` values)                    |
 | `-H, --height <N>` | `1`     | height in characters (4 px per char)                        |
-| `-m, --max <F>`    | auto    | Y-axis top; values above are clamped. Default: window max   |
+| `--min <F>`        | `0`     | Y-axis floor; values below are clamped                      |
+| `-m, --max <F>`    | auto    | Y-axis top; values above are clamped (window max)           |
 | `-p, --point`      | off     | draw only the marker at each value, no fill (default: bars) |
 
 Behavior worth knowing:
@@ -88,11 +89,12 @@ Behavior worth knowing:
   graph shows the last `2*W` values.
 - **Fills left to right.** More values than fit → the last `2*W` are kept;
   fewer → they sit on the left, blank on the right.
-- **Y scale is 0-based.** Auto max is the largest value in the window (or `--max`).
-  Clustered-but-large values (e.g. ping in the 10–30ms range) all look tall
-  because the floor is 0 — pin `--max`/a lower bound yourself if you want spread.
-- **Negatives clamp to 0**, **non-numeric tokens become gaps** (empty column),
-  and any positive value shows at least one pixel so small bars don't vanish.
+- **Y range is `--min`..`--max`** (defaults `0`..window-max); out-of-range
+  values clamp to it. For data that lives in a band — CPU temp at 40–80 °C —
+  set `--min` so the graph uses the full height instead of hugging the top.
+- **Non-numeric tokens become gaps** (empty column), negatives vanish at the
+  default floor of 0, and any value above the floor shows at least one pixel so
+  small bars don't disappear.
 
 ## Examples
 
@@ -115,6 +117,14 @@ A random walk, two chars tall:
 
 ```sh
 awk 'BEGIN{x=50;for(i=0;i<60;i++){x+=int(rand()*21)-10;if(x<0)x=0;if(x>100)x=100;print x}}' | agrf -w 30 -H 2
+```
+
+CPU temperature sampled once a second, scaled to a 40–90 °C band so the
+variation shows (0-based would glue it to the top):
+
+```sh
+for _ in $(seq 60); do awk '{print $1/1000}' /sys/class/thermal/thermal_zone0/temp; sleep 1; done \
+  | agrf -w 30 --min 40 --max 90
 ```
 
 ## License

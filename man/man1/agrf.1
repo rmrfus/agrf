@@ -15,11 +15,12 @@ Each value maps to one pixel column; two columns fit in one braille
 character, so a graph
 .I W
 characters wide shows the last 2*\fIW\fR values, filled left to right.
-Non\-numeric tokens become gaps (empty columns), negative values clamp
-to zero, and the vertical scale is 0\-based \(em auto\-fit to the window
-maximum unless
+Non\-numeric tokens become gaps (empty columns). The vertical scale runs
+from
+.B \-\-min
+(default 0) to
 .B \-\-max
-is given, in which case larger values are clamped to it.
+(default: the window maximum); values outside the range clamp to it.
 .SH OPTIONS
 .TP
 .BR \-w ", " \-\-width " \fIN\fR"
@@ -27,6 +28,9 @@ Output width in characters; holds 2*\fIN\fR values. Default: 20.
 .TP
 .BR \-H ", " \-\-height " \fIN\fR"
 Output height in characters; 4 pixels per character. Default: 1.
+.TP
+.BR \-\-min " \fIF\fR"
+Y\-axis minimum; values below are clamped. Default: 0.
 .TP
 .BR \-m ", " \-\-max " \fIF\fR"
 Y\-axis maximum; values above are clamped. Default: auto (window max).

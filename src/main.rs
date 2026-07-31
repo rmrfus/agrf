@@ -23,6 +23,10 @@ struct Args {
     #[arg(short = 'H', long, default_value_t = 1)]
     height: usize,
 
+    /// Y-axis minimum; values below are clamped. Default: 0.
+    #[arg(long)]
+    min: Option<f64>,
+
     /// Y-axis maximum; values above are clamped. Default: auto (window max).
     #[arg(short, long)]
     max: Option<f64>,
@@ -58,6 +62,7 @@ fn main() {
     let opts = Opts {
         width: args.width,
         height: args.height,
+        min: args.min,
         max: args.max,
         point: args.point,
     };
