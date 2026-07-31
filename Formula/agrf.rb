@@ -1,8 +1,8 @@
 class Agrf < Formula
   desc "Stream of int/float to unicode braille graphs"
   homepage "https://github.com/rmrfus/agrf"
-  url "https://github.com/rmrfus/agrf/archive/refs/tags/v0.2.0.tar.gz"
-  sha256 "7f0d69b39bcb67d3321dbbf0381f1ff1672b9c9382019bf9b8b8be6f086f7be7"
+  url "https://github.com/rmrfus/agrf/archive/refs/tags/v0.3.0.tar.gz"
+  sha256 "4074e2f798f8970c06fc2bb666339ae7adf0775529a9d408ae9621313232090f"
   license "MIT"
 
   depends_on "rust" => :build
