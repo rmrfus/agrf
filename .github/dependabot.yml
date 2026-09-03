@@ -8,3 +8,9 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      # This one is not a version to keep current: its SHA pins the toolchain
+      # the msrv job builds on, and it has to stay equal to rust-version in
+      # Cargo.toml. Letting dependabot advance it would leave the job green
+      # while checking a floor the crate never claimed.
+      - dependency-name: dtolnay/rust-toolchain

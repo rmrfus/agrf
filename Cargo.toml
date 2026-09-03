@@ -2,8 +2,11 @@
 name = "agrf"
 version = "0.3.1"
 edition = "2024"
-# Our own floor, not a dependency's: edition 2024 needs 1.85. Without this a
-# stable-but-older toolchain fails on the edition key instead of saying so.
+# Our own floor: edition 2024 needs 1.85, and clap 4.6 declares the same. It
+# does not improve the error an older toolchain gives — the edition is rejected
+# before this field is read. What it buys is the MSRV-aware resolver, clippy's
+# incompatible_msrv, and a number the msrv CI job can check, so the floor has
+# to track the newest feature actually used rather than being decorative.
 rust-version = "1.85"
 description = "Stream of int/float to unicode braille graphs"
 homepage = "https://github.com/rmrfus/agrf"
