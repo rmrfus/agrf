@@ -6,6 +6,11 @@ on:
   pull_request:
   # Advisories are the reason for the schedule: one published after the last
   # commit is invisible until the next one, and this repo goes months without.
+  # Known and accepted: GitHub disables a scheduled workflow in a public repo
+  # after 60 days with no activity, which is the same dormancy this covers. The
+  # months right after the last commit are when a fresh advisory matters most,
+  # and that window is inside the 60 days — so no external driver for a tool
+  # this small.
   schedule:
     - cron: '0 13 * * 1'
 
@@ -53,7 +58,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: dtolnay/rust-toolchain@bc540ba06a4ccee415bb241490e0b25ee8e7d315 # 1.85.0
+      # Pinned to the v1 branch with the version as an *input*, not as the ref.
+      # On the version branches (@1.85.0) there is no `toolchain` input at all
+      # and the floor is baked into the ref, so an action bump would silently
+      # move it; here `toolchain` is required with no default, so dropping it
+      # fails the job outright rather than testing the wrong floor.
+      # It must equal rust-version in Cargo.toml — nothing checks that.
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: "1.85.0"
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:

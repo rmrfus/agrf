@@ -9,6 +9,9 @@ pipe in a status bar or a `watch` loop.
 - lint: `nix develop --command cargo clippy --all-targets --locked -- -D warnings`
 - man: `nix develop --command groff -man -Tutf8 -ww -z man/man1/agrf.1`
 
+Install the hook once per clone: `git config core.hooksPath hooks`. It lints
+the staged tree, not the working tree.
+
 ## Layout
 
 - `render.rs` — everything: tokens -> pixel grid -> string. Pure, no I/O, so
@@ -40,6 +43,11 @@ pipe in a status bar or a `watch` loop.
 - **Output goes through `write_all` + `flush`, with `BrokenPipe` as a clean
   exit.** `agrf | head` is normal usage, and the `print!` family unwraps the
   EPIPE write error into a panic.
+- **`rust-version` in Cargo.toml and `toolchain:` in the msrv CI job move in
+  the same commit.** Nothing checks that they agree. Raise the floor alone and
+  the job keeps passing on the old toolchain — it still exists and still builds
+  — so it goes on verifying a floor the crate no longer claims, which is the
+  one failure that job exists to prevent.
 - **`width * height` is capped at the argument boundary, before render.** The
   grid is allocated eagerly, so an unchecked product is an OOM (or a `usize`
   overflow) driven straight from argv.
