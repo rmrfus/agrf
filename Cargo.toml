@@ -8,7 +8,7 @@ edition = "2024"
 # incompatible_msrv, and a number the msrv CI job can check, so the floor has
 # to track the newest feature actually used rather than being decorative.
 rust-version = "1.85"
-description = "Stream of int/float to unicode braille graphs"
+description = "Numbers in, braille sparkline out"
 homepage = "https://github.com/rmrfus/agrf"
 repository = "https://github.com/rmrfus/agrf"
 license = "MIT"

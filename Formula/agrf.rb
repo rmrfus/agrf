@@ -1,5 +1,5 @@
 class Agrf < Formula
-  desc "Stream of int/float to unicode braille graphs"
+  desc "Numbers in, braille sparkline out"
   homepage "https://github.com/rmrfus/agrf"
   url "https://github.com/rmrfus/agrf/archive/refs/tags/v0.3.2.tar.gz"
   sha256 "1822fa19a5b732455bb2f70541faf3f55c7eb3606eacdeba9430219ea4b0d2a2"
