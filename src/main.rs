@@ -79,7 +79,7 @@ fn main() -> ExitCode {
 
     // Write directly so a closed pipe (e.g. `agrf | head`) exits cleanly
     // instead of panicking — the print! macro unwraps the EPIPE write error.
-    let out = render::render(&values, &opts);
+    let out = render::braille(&values, &opts);
     let mut stdout = io::stdout().lock();
     let res = stdout
         .write_all(out.as_bytes())

@@ -40,7 +40,7 @@ pub fn parse(input: &str) -> Vec<Option<f64>> {
 
 /// Render values into a braille graph string (one `\n`-terminated line per
 /// character row, top row first).
-pub fn render(values: &[Option<f64>], opts: &Opts) -> String {
+pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
     let rows_px = opts.height * 4;
     let cols_px = opts.width * 2;
 
@@ -73,10 +73,8 @@ pub fn render(values: &[Option<f64>], opts: &Opts) -> String {
     let mut grid = vec![vec![false; cols_px]; rows_px];
 
     for (c, cell) in window.iter().enumerate() {
-        let v = match cell {
-            Some(v) => *v,
-            None => continue, // gap: leave the column empty
-        };
+        // gap: leave the column empty
+        let Some(v) = *cell else { continue };
         // Clamp into [ymin, ymax] and map to a 0..1 fraction of the range.
         let frac = if scaled {
             (v.clamp(ymin, ymax) - ymin) / span
@@ -169,40 +167,40 @@ mod tests {
     #[test]
     fn full_bars_fill_the_cell() {
         // Two full-height bars in one char -> all 8 dots.
-        let out = render(&[Some(1.0), Some(1.0)], &o(1, 1, Some(1.0), false));
+        let out = braille(&[Some(1.0), Some(1.0)], &o(1, 1, Some(1.0), false));
         assert_eq!(out, "⣿\n");
     }
 
     #[test]
     fn half_bar_fills_bottom_two_rows() {
         // value 2 of max 4 -> 2 px of 4 -> lower half.
-        let out = render(&[Some(2.0), Some(2.0)], &o(1, 1, Some(4.0), false));
+        let out = braille(&[Some(2.0), Some(2.0)], &o(1, 1, Some(4.0), false));
         assert_eq!(out, "⣤\n");
     }
 
     #[test]
     fn tiny_value_shows_one_pixel() {
         // 1 of 100 rounds to 0 px, but min-1px keeps it visible (bottom row).
-        let out = render(&[Some(1.0), Some(1.0)], &o(1, 1, Some(100.0), false));
+        let out = braille(&[Some(1.0), Some(1.0)], &o(1, 1, Some(100.0), false));
         assert_eq!(out, "⣀\n");
     }
 
     #[test]
     fn exact_zero_stays_empty_in_bar_mode() {
-        let out = render(&[Some(0.0), Some(0.0)], &o(1, 1, Some(100.0), false));
+        let out = braille(&[Some(0.0), Some(0.0)], &o(1, 1, Some(100.0), false));
         assert_eq!(out, "⠀\n"); // U+2800, blank braille
     }
 
     #[test]
     fn negatives_clamp_to_zero() {
-        let out = render(&[Some(-5.0), Some(-5.0)], &o(1, 1, Some(10.0), false));
+        let out = braille(&[Some(-5.0), Some(-5.0)], &o(1, 1, Some(10.0), false));
         assert_eq!(out, "⠀\n");
     }
 
     #[test]
     fn window_keeps_last_values() {
         // cap = width*2 = 2; only the last two (both max) are drawn.
-        let out = render(
+        let out = braille(
             &[Some(0.0), Some(0.0), Some(1.0), Some(1.0)],
             &o(1, 1, Some(1.0), false),
         );
@@ -213,7 +211,7 @@ mod tests {
     fn underfill_is_left_aligned_blank_right() {
         // One full value in a 2-char graph -> left char left-column filled,
         // rest blank.
-        let out = render(&[Some(1.0)], &o(2, 1, Some(1.0), false));
+        let out = braille(&[Some(1.0)], &o(2, 1, Some(1.0), false));
         assert_eq!(out, "⡇⠀\n");
     }
 
@@ -221,35 +219,35 @@ mod tests {
     fn non_numeric_leaves_a_gap() {
         // col0 full, col1 gap (None), col2 full -> ⡇ then ⡇ (gap = right px of
         // first char stays empty).
-        let out = render(&[Some(1.0), None, Some(1.0)], &o(2, 1, Some(1.0), false));
+        let out = braille(&[Some(1.0), None, Some(1.0)], &o(2, 1, Some(1.0), false));
         assert_eq!(out, "⡇⡇\n");
     }
 
     #[test]
     fn point_zero_is_bottom_max_is_top() {
-        let bottom = render(&[Some(0.0), Some(0.0)], &o(1, 1, Some(1.0), true));
+        let bottom = braille(&[Some(0.0), Some(0.0)], &o(1, 1, Some(1.0), true));
         assert_eq!(bottom, "⣀\n"); // dots 7,8
-        let top = render(&[Some(1.0), Some(1.0)], &o(1, 1, Some(1.0), true));
+        let top = braille(&[Some(1.0), Some(1.0)], &o(1, 1, Some(1.0), true));
         assert_eq!(top, "⠉\n"); // dots 1,4
     }
 
     #[test]
     fn empty_input_yields_blank_grid() {
-        let out = render(&[], &o(3, 1, None, false));
+        let out = braille(&[], &o(3, 1, None, false));
         assert_eq!(out, "⠀⠀⠀\n");
     }
 
     #[test]
     fn min_shifts_the_floor() {
         // Range [40, 60]: 40 sits on the floor (empty), 50 half, 60 full.
-        assert_eq!(render(&[Some(40.0), Some(40.0)], &band(40.0, 60.0)), "⠀\n");
-        assert_eq!(render(&[Some(50.0), Some(50.0)], &band(40.0, 60.0)), "⣤\n");
-        assert_eq!(render(&[Some(60.0), Some(60.0)], &band(40.0, 60.0)), "⣿\n");
+        assert_eq!(braille(&[Some(40.0), Some(40.0)], &band(40.0, 60.0)), "⠀\n");
+        assert_eq!(braille(&[Some(50.0), Some(50.0)], &band(40.0, 60.0)), "⣤\n");
+        assert_eq!(braille(&[Some(60.0), Some(60.0)], &band(40.0, 60.0)), "⣿\n");
     }
 
     #[test]
     fn below_min_clamps_to_floor() {
         // 30 is below the floor of 40 -> clamps to the floor -> empty.
-        assert_eq!(render(&[Some(30.0), Some(30.0)], &band(40.0, 60.0)), "⠀\n");
+        assert_eq!(braille(&[Some(30.0), Some(30.0)], &band(40.0, 60.0)), "⠀\n");
     }
 }
