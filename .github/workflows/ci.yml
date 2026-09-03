@@ -10,10 +10,12 @@ permissions:
 
 jobs:
   check:
+    # Pure Rust with one dependency, so rustup plus a cache beats spinning up
+    # nix here: nothing in this crate needs a pinned C library.
     name: fmt · clippy · test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Add components
         run: rustup component add clippy rustfmt
@@ -28,3 +30,37 @@ jobs:
 
       - name: Test
         run: cargo test --locked
+
+  nix:
+    # The checks whose tools live in the devShell, plus the flake itself.
+    name: man · advisories · unused deps · package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      # -z parses and reports without rendering, so a broken macro fails the
+      # build instead of producing a mangled page nobody reads until they
+      # need it.
+      - name: Man page
+        run: nix develop --command groff -man -Tutf8 -ww -z man/man1/agrf.1
+
+      # RustSec advisories against the committed lockfile. Covers what
+      # cargo-audit does, so this is the only scanner here.
+      - name: Advisories
+        run: nix develop --command cargo deny check advisories
+
+      # A dependency nothing imports is not a crash; it keeps appearing in the
+      # advisory scan above for code that is no longer called, and can hold the
+      # MSRV higher than our own source needs.
+      - name: Unused dependencies
+        run: nix develop --command cargo machete
+
+      # Not just a local convenience: without this the flake rots quietly and
+      # the breakage lands on whoever first runs `nix run github:rmrfus/agrf`.
+      - name: Package
+        run: nix build
