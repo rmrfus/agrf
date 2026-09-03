@@ -4,15 +4,19 @@
 # still sitting on disk.
 set -Eeuo pipefail
 
-work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+# A fixed path rather than `mktemp -d`, and its own target dir. Integration
+# tests bake CARGO_BIN_EXE_* in at compile time, so building them somewhere
+# that is then deleted leaves a cached test binary pointing at nothing — and
+# sharing the developer's target/ hands them that corpse on their next
+# `cargo test`. Everything here lives under target/, which is already ignored.
+work="$PWD/target/pre-commit"
+rm -rf "$work"
+mkdir -p "$work"
 
 git checkout-index --all --prefix="$work/"
-# Cargo needs the lockfile and the build cache; symlink target/ rather than
-# rebuilding the world on every commit.
-[[ -d target ]] && ln -s "$PWD/target" "$work/target"
 
 cd "$work"
+export CARGO_TARGET_DIR="$work/target"
 nix develop "$OLDPWD" --command sh -c '
   set -e
   cargo fmt --all --check

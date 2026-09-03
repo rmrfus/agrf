@@ -10,7 +10,9 @@ pipe in a status bar or a `watch` loop.
 - man: `nix develop --command groff -man -Tutf8 -ww -z man/man1/agrf.1`
 
 Install the hook once per clone: `git config core.hooksPath hooks`. It lints
-the staged tree, not the working tree.
+the staged tree, not the working tree, in `target/pre-commit/` with a target
+dir of its own — see the note in the hook about why that path must be fixed
+and separate.
 
 ## Layout
 
@@ -45,6 +47,12 @@ the staged tree, not the working tree.
 - **Output goes through `write_all` + `flush`, with `BrokenPipe` as a clean
   exit.** `agrf | head` is normal usage, and the `print!` family unwraps the
   EPIPE write error into a panic.
+- **The pre-commit hook builds in a fixed directory with its own
+  `CARGO_TARGET_DIR`.** `env!("CARGO_BIN_EXE_agrf")` in `tests/` is resolved at
+  compile time, so building the suite under `mktemp -d` bakes in a path that is
+  deleted seconds later; sharing the working tree's `target/` then serves that
+  dead binary to the next `cargo test`, which fails with a bare `No such file
+  or directory` and no hint of where it came from.
 - **`--follow` redraws in place only on a terminal.** Down a pipe the cursor
   escapes would land in the reader's data, so the frames are emitted plainly
   instead. The check is `IsTerminal` on stdout, decided once rather than per
