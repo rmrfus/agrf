@@ -50,6 +50,15 @@ Y\-axis maximum; values above are clamped. Default: auto (window max).
 Point mode: draw only the marker at each value, without filling
 underneath. Default: bars.
 .TP
+.BR \-f ", " \-\-follow
+Follow standard input: redraw after every line instead of reading to
+end\-of\-file first. On a terminal each frame overwrites the previous one;
+elsewhere the frames are written one after another, since a pipe has no
+cursor to move and a reader wants the history. Values that scroll out of
+the window are discarded, so following an endless stream does not grow
+without bound. Cannot be combined with positional values, which are not a
+stream.
+.TP
 .BR \-\-charset " " braille | blocks
 Glyphs to draw with. Default:
 .BR braille ,
@@ -89,6 +98,13 @@ agrf \-p 3 7 2 9 5
 .EE
 .RE
 .PP
+Live ping latency, redrawn as each reply arrives:
+.RS
+.EX
+ping 1.1.1.1 | grep \-\-line\-buffered \-oP 'time=\eK[0-9.]+' | agrf \-f \-w 30
+.EE
+.RE
+.PP
 A band of temperatures, scaled to its own range, in blocks:
 .RS
 .EX
@@ -96,7 +112,9 @@ agrf \-\-min auto \-\-charset blocks 41 43 47 44 52 49
 .EE
 .RE
 .SH EXIT STATUS
-Returns 0 on success, 1 on an I/O error (standard input cannot be read,
+Returns 0 on success \(em including
+.B \-\-follow
+reaching end\-of\-file \(em 1 on an I/O error (standard input cannot be read,
 or the output cannot be written), and 2 on invalid arguments. A closed
 output pipe, as in
 .BR "agrf | head" ,

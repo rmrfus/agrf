@@ -45,6 +45,13 @@ the staged tree, not the working tree.
 - **Output goes through `write_all` + `flush`, with `BrokenPipe` as a clean
   exit.** `agrf | head` is normal usage, and the `print!` family unwraps the
   EPIPE write error into a panic.
+- **`--follow` redraws in place only on a terminal.** Down a pipe the cursor
+  escapes would land in the reader's data, so the frames are emitted plainly
+  instead. The check is `IsTerminal` on stdout, decided once rather than per
+  frame.
+- **The follow buffer is trimmed to the window on every line.** Dropping values
+  that have scrolled off is not tidiness — it is the difference between a tool
+  that can watch a stream for a week and one that is an OOM with a countdown.
 - **The block glyphs can only fill from the bottom, so `--point` has no block
   rendering.** U+2581..U+2588 are eighths measured up from the baseline; there
   is no glyph for a lone mark part way up a cell. The combination is refused at

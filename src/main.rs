@@ -1,4 +1,4 @@
-use std::io::{self, Read, Write};
+use std::io::{self, BufRead, IsTerminal, Read, Write};
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -41,6 +41,10 @@ struct Args {
     /// are the fallback where the font has no braille.
     #[arg(long, default_value = "braille", value_parser = parse_charset)]
     charset: Charset,
+
+    /// Follow stdin: redraw after every line instead of waiting for EOF.
+    #[arg(short, long)]
+    follow: bool,
 }
 
 /// Which glyph family draws the graph.
@@ -99,6 +103,26 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
 
+    // Following means reading forever, which positional values cannot do.
+    // Silently ignoring the flag would leave the user waiting for a redraw
+    // that is never coming.
+    if args.follow && !args.values.is_empty() {
+        eprintln!("agrf: --follow reads stdin; it cannot be combined with positional values");
+        return ExitCode::from(2);
+    }
+
+    let opts = Opts {
+        width: args.width,
+        height: args.height,
+        min: args.min,
+        max: args.max,
+        point: args.point,
+    };
+
+    if args.follow {
+        return follow(&opts, args.charset);
+    }
+
     let input = if args.values.is_empty() {
         let mut buf = String::new();
         if let Err(e) = io::stdin().read_to_string(&mut buf) {
@@ -111,20 +135,10 @@ fn main() -> ExitCode {
     };
 
     let values = render::parse(&input);
-    let opts = Opts {
-        width: args.width,
-        height: args.height,
-        min: args.min,
-        max: args.max,
-        point: args.point,
-    };
 
     // Write directly so a closed pipe (e.g. `agrf | head`) exits cleanly
     // instead of panicking — the print! macro unwraps the EPIPE write error.
-    let out = match args.charset {
-        Charset::Braille => render::braille(&values, &opts),
-        Charset::Blocks => render::blocks(&values, &opts),
-    };
+    let out = draw(&values, &opts, args.charset);
     let mut stdout = io::stdout().lock();
     let res = stdout
         .write_all(out.as_bytes())
@@ -134,6 +148,78 @@ fn main() -> ExitCode {
             eprintln!("agrf: {e}");
             return ExitCode::FAILURE;
         }
+    }
+    ExitCode::SUCCESS
+}
+
+fn draw(values: &[Option<f64>], opts: &Opts, charset: Charset) -> String {
+    match charset {
+        Charset::Braille => render::braille(values, opts),
+        Charset::Blocks => render::blocks(values, opts),
+    }
+}
+
+/// Redraw after every line of stdin, keeping only the values that still fit.
+///
+/// On a terminal each frame overwrites the last, by walking the cursor back up
+/// `height` rows; anywhere else the frames are simply emitted one after
+/// another, because a pipe has no cursor to move and a reader wants the
+/// history. The trailing values are dropped as they scroll out of the window,
+/// so following an endless stream does not grow the buffer.
+fn follow(opts: &Opts, charset: Charset) -> ExitCode {
+    let cell_w = match charset {
+        Charset::Braille => render::BRAILLE_CELL.0,
+        Charset::Blocks => render::BLOCKS_CELL.0,
+    };
+    let capacity = opts.width * cell_w;
+
+    let mut values: Vec<Option<f64>> = Vec::new();
+    let mut out = io::stdout().lock();
+    // Decided once: the handle is the same for every frame, and asking per
+    // frame would only cost syscalls.
+    let overwrite = out.is_terminal();
+    let mut drawn = false;
+
+    for line in io::stdin().lock().lines() {
+        let line = match line {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("agrf: failed to read stdin: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
+
+        let batch = render::parse(&line);
+        // A blank or non-numeric line adds nothing; redrawing the same frame
+        // would just make a terminal flicker.
+        if batch.is_empty() {
+            continue;
+        }
+        values.extend(batch);
+        if values.len() > capacity {
+            values.drain(..values.len() - capacity);
+        }
+
+        let mut frame = String::new();
+        if overwrite && drawn {
+            // CUU: back to the first row of the frame just drawn. Every frame
+            // is the same width, so the old one is fully covered — except when
+            // the graph is wider than the terminal and the lines wrapped, which
+            // no escape can repair without knowing the window size.
+            frame.push_str(&format!("\x1b[{}A", opts.height));
+        }
+        frame.push_str(&draw(&values, opts, charset));
+
+        let res = out.write_all(frame.as_bytes()).and_then(|()| out.flush());
+        if let Err(e) = res {
+            // Reader went away — the same clean exit as the one-shot path.
+            if e.kind() == io::ErrorKind::BrokenPipe {
+                return ExitCode::SUCCESS;
+            }
+            eprintln!("agrf: {e}");
+            return ExitCode::FAILURE;
+        }
+        drawn = true;
     }
     ExitCode::SUCCESS
 }

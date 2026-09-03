@@ -93,6 +93,7 @@ Values come from positional args if given, otherwise from stdin
 | `-m, --max <F>`    | auto    | Y-axis top; values above are clamped (window max)           |
 | `-p, --point`      | off     | draw only the marker at each value, no fill (default: bars) |
 | `--charset <C>`    | braille | `braille` (2 values/char) or `blocks` (1 value, 8 levels)   |
+| `-f, --follow`     | off     | redraw after every line of stdin instead of waiting for EOF |
 
 Behavior worth knowing:
 
@@ -104,6 +105,11 @@ Behavior worth knowing:
   values clamp to it. For data that lives in a band — CPU temp at 40–80 °C —
   set `--min`, or `--min auto` to let the window's own minimum be the floor,
   so the graph uses the full height instead of hugging the top.
+- **`-f, --follow` turns it into a live graph.** Without it the whole of stdin
+  is read before anything is drawn, which is what you want for `seq` or a
+  finished log and useless for `tail -f`. With it, every line redraws: in place
+  on a terminal, one frame after another down a pipe. The buffer never grows —
+  values that scroll off the left are dropped.
 - **`--charset blocks` is the no-braille fallback.** One value per character
   over eight levels (`▁▂▃▄▅▆▇█`) instead of two values over four. Those glyphs
   only fill from the bottom, so `--point` is refused with them rather than
@@ -133,6 +139,22 @@ A random walk, two chars tall:
 
 ```sh
 awk 'BEGIN{x=50;for(i=0;i<60;i++){x+=int(rand()*21)-10;if(x<0)x=0;if(x>100)x=100;print x}}' | agrf -w 30 -H 2
+```
+
+Live ping latency, redrawn in place as each reply lands:
+
+```sh
+ping 1.1.1.1 | grep --line-buffered -oP 'time=\K[0-9.]+' | agrf -f -w 30
+```
+
+`--line-buffered` matters: without it grep holds its output in a 4 KB buffer
+and the graph updates in bursts. The same applies to `awk` (`fflush()`) and to
+`stdbuf -oL` in front of anything else.
+
+Temperatures in a narrow band, scaled to themselves, without braille:
+
+```sh
+agrf --min auto --charset blocks -w 6 41 43 47 44 52 49
 ```
 
 CPU temperature sampled once a second, scaled to a 40–90 °C band so the

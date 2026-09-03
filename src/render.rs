@@ -15,6 +15,13 @@
 //! character, using U+2581..U+2588. Those glyphs can only express a fill from
 //! the bottom, which is why point mode has no block rendering.
 
+/// Pixels per output character, (width, height). One value occupies one pixel
+/// column, so the first number is also how many values a character holds —
+/// which is what a caller needs to size a sliding window.
+pub const BRAILLE_CELL: (usize, usize) = (2, 4);
+/// See [`BRAILLE_CELL`]. Blocks trade horizontal resolution for vertical.
+pub const BLOCKS_CELL: (usize, usize) = (1, 8);
+
 /// Bit contributed by the pixel at (row-in-cell dy, col-in-cell dx).
 const BIT: [[u8; 2]; 4] = [
     [0x01, 0x08], // dots 1, 4
@@ -124,7 +131,7 @@ fn pixels(values: &[Option<f64>], opts: &Opts, cell_w: usize, cell_h: usize) -> 
 /// row first). 2 px wide x 4 px tall per character, so a graph `width`
 /// characters across holds `2 * width` values.
 pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
-    let grid = pixels(values, opts, 2, 4);
+    let grid = pixels(values, opts, BRAILLE_CELL.0, BRAILLE_CELL.1);
     if grid.is_empty() {
         return "\n".repeat(opts.height);
     }
@@ -161,7 +168,7 @@ pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
 /// nothing else, so a lone marker has no glyph — `point` is rejected before
 /// this is called.
 pub fn blocks(values: &[Option<f64>], opts: &Opts) -> String {
-    let grid = pixels(values, opts, 1, 8);
+    let grid = pixels(values, opts, BLOCKS_CELL.0, BLOCKS_CELL.1);
     if grid.is_empty() {
         return "\n".repeat(opts.height);
     }
