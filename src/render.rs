@@ -113,7 +113,11 @@ pub fn render(values: &[Option<f64>], opts: &Opts) -> String {
                     }
                 }
             }
-            // 0x2800..=0x28FF is always a valid char; unwrap can't fail.
+            // bits is a u8, so the sum stays inside 0x2800..=0x28FF, which is
+            // entirely assigned and holds no surrogate — from_u32 cannot
+            // return None here. #[expect] rather than #[allow] so the day this
+            // stops being an unwrap, clippy says the attribute is now dead.
+            #[expect(clippy::unwrap_used, reason = "value is a proven-valid scalar")]
             out.push(char::from_u32(0x2800 + bits as u32).unwrap());
         }
         out.push('\n');
