@@ -65,6 +65,15 @@ cargo build --release   # ./target/release/agrf
 cargo install --path .  # or drop it onto your PATH
 ```
 
+`cargo install` copies the binary and nothing else, so the man page needs the
+Makefile. It honours the usual `PREFIX`/`DESTDIR`:
+
+```sh
+make && sudo make install                  # /usr/local
+make && make install PREFIX="$HOME/.local"
+make install DESTDIR="$pkgdir" PREFIX=/usr # packaging
+```
+
 ## Usage
 
 ```
