@@ -9,7 +9,8 @@ agrf \- numbers in, braille sparkline out
 .B agrf
 reads whitespace\-separated integers or floats from positional
 arguments (if any) or standard input and draws them as a compact
-sparkline / bar chart using braille dots (U+2800).
+sparkline / bar chart using braille dots (U+2800), or block eighths
+(U+2581..U+2588) where the font has no braille.
 .PP
 Each value maps to one pixel column; two columns fit in one braille
 character, so a graph
@@ -24,13 +25,23 @@ from
 .SH OPTIONS
 .TP
 .BR \-w ", " \-\-width " \fIN\fR"
-Output width in characters; holds 2*\fIN\fR values. Default: 20.
+Output width in characters; holds 2*\fIN\fR values, or \fIN\fR with
+.BR \-\-charset " " blocks .
+Default: 20.
 .TP
 .BR \-H ", " \-\-height " \fIN\fR"
-Output height in characters; 4 pixels per character. Default: 1.
+Output height in characters; 4 pixels per character, or 8 with
+.BR \-\-charset " " blocks .
+Default: 1.
 .TP
-.BR \-\-min " \fIF\fR"
-Y\-axis minimum; values below are clamped. Default: 0.
+.BR \-\-min " \fIF\fR|" auto
+Y\-axis minimum; values below are clamped. Default: 0. With
+.B auto
+the floor is the smallest value in the window, which spends the whole
+height on the variation rather than on the distance from zero \(em useful
+for data that lives in a band, such as a temperature between 40 and 60.
+Must be finite: a non\-numeric or infinite floor is rejected rather than
+silently producing a blank graph.
 .TP
 .BR \-m ", " \-\-max " \fIF\fR"
 Y\-axis maximum; values above are clamped. Default: auto (window max).
@@ -38,6 +49,18 @@ Y\-axis maximum; values above are clamped. Default: auto (window max).
 .BR \-p ", " \-\-point
 Point mode: draw only the marker at each value, without filling
 underneath. Default: bars.
+.TP
+.BR \-\-charset " " braille | blocks
+Glyphs to draw with. Default:
+.BR braille ,
+which packs two values into each character (2 px wide by 4 px tall).
+.B blocks
+draws one value per character over eight vertical levels \(em half the
+horizontal resolution for twice the vertical, and the fallback for a
+terminal whose font has no braille. Because the block glyphs can only
+express a fill from the bottom,
+.B \-\-point
+cannot be combined with them and the pair is rejected.
 .TP
 .BR \-h ", " \-\-help
 Print help and exit.
@@ -63,6 +86,13 @@ Positional values in point mode:
 .RS
 .EX
 agrf \-p 3 7 2 9 5
+.EE
+.RE
+.PP
+A band of temperatures, scaled to its own range, in blocks:
+.RS
+.EX
+agrf \-\-min auto \-\-charset blocks 41 43 47 44 52 49
 .EE
 .RE
 .SH EXIT STATUS

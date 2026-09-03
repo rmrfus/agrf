@@ -10,6 +10,10 @@
 //! ```
 //!
 //! The bit for each (dy, dx) — verified against real glyphs.
+//!
+//! The block charset draws the same pixel grid at one column by eight rows per
+//! character, using U+2581..U+2588. Those glyphs can only express a fill from
+//! the bottom, which is why point mode has no block rendering.
 
 /// Bit contributed by the pixel at (row-in-cell dy, col-in-cell dx).
 const BIT: [[u8; 2]; 4] = [
@@ -19,11 +23,22 @@ const BIT: [[u8; 2]; 4] = [
     [0x40, 0x80], // dots 7, 8
 ];
 
+/// Lower bound of the Y axis.
+#[derive(Debug, Clone, Copy)]
+pub enum Floor {
+    /// A fixed value. `Fixed(0.0)` is the default and keeps a bar's height
+    /// proportional to its value.
+    Fixed(f64),
+    /// The window's own minimum, which spends the whole cell on the variation
+    /// rather than on the distance from zero.
+    Auto,
+}
+
 /// Render options. `width`/`height` are in characters.
 pub struct Opts {
     pub width: usize,
     pub height: usize,
-    pub min: Option<f64>,
+    pub min: Floor,
     pub max: Option<f64>,
     pub point: bool,
 }
@@ -38,15 +53,13 @@ pub fn parse(input: &str) -> Vec<Option<f64>> {
         .collect()
 }
 
-/// Render values into a braille graph string (one `\n`-terminated line per
-/// character row, top row first).
-pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
-    let rows_px = opts.height * 4;
-    let cols_px = opts.width * 2;
-
-    // Degenerate size: still emit the requested number of (empty) lines.
+/// Build the pixel grid, `cell_w` x `cell_h` pixels per output character.
+/// Row 0 is the top. Returns an empty grid when no rows were asked for.
+fn pixels(values: &[Option<f64>], opts: &Opts, cell_w: usize, cell_h: usize) -> Vec<Vec<bool>> {
+    let rows_px = opts.height * cell_h;
+    let cols_px = opts.width * cell_w;
     if rows_px == 0 {
-        return "\n".repeat(opts.height);
+        return Vec::new();
     }
 
     // Keep only the last `cols_px` values; they sit left-aligned, blank right.
@@ -56,10 +69,17 @@ pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
         values
     };
 
-    // Y range [ymin, ymax]: ymin defaults to 0, ymax to the window's peak.
-    // Values outside the range clamp to it. A non-positive or non-finite span
-    // (no data, or min >= max) is degenerate -> empty/baseline graph.
-    let ymin = opts.min.unwrap_or(0.0);
+    // Y range [ymin, ymax]: ymax defaults to the window's peak. Values outside
+    // the range clamp to it. A non-positive or non-finite span (no data, or
+    // min >= max) is degenerate -> empty/baseline graph. An auto floor over an
+    // empty window yields +inf, which lands in that same degenerate case.
+    let ymin = match opts.min {
+        Floor::Fixed(v) => v,
+        Floor::Auto => window
+            .iter()
+            .filter_map(|v| *v)
+            .fold(f64::INFINITY, f64::min),
+    };
     let ymax = opts.max.unwrap_or_else(|| {
         window
             .iter()
@@ -69,7 +89,6 @@ pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
     let span = ymax - ymin;
     let scaled = span.is_finite() && span > 0.0;
 
-    // Pixel grid, row 0 = top.
     let mut grid = vec![vec![false; cols_px]; rows_px];
 
     for (c, cell) in window.iter().enumerate() {
@@ -98,8 +117,18 @@ pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
             }
         }
     }
+    grid
+}
 
-    // Pixel grid -> braille characters.
+/// Render values as braille (one `\n`-terminated line per character row, top
+/// row first). 2 px wide x 4 px tall per character, so a graph `width`
+/// characters across holds `2 * width` values.
+pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
+    let grid = pixels(values, opts, 2, 4);
+    if grid.is_empty() {
+        return "\n".repeat(opts.height);
+    }
+
     let mut out = String::with_capacity(opts.height * (opts.width + 1));
     for cr in 0..opts.height {
         for cc in 0..opts.width {
@@ -123,6 +152,44 @@ pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
     out
 }
 
+/// Render values as block eighths — the fallback for a terminal whose font has
+/// no braille. 1 px wide x 8 px tall per character, so a graph `width`
+/// characters across holds `width` values: half the horizontal resolution of
+/// braille for twice the vertical.
+///
+/// Bar mode only. U+2581..U+2588 can express a fill from the bottom and
+/// nothing else, so a lone marker has no glyph — `point` is rejected before
+/// this is called.
+pub fn blocks(values: &[Option<f64>], opts: &Opts) -> String {
+    let grid = pixels(values, opts, 1, 8);
+    if grid.is_empty() {
+        return "\n".repeat(opts.height);
+    }
+
+    let mut out = String::with_capacity(opts.height * (opts.width + 1));
+    for cr in 0..opts.height {
+        // The eight pixel rows this character row is made of. The glyph is a
+        // fill from the bottom, so a column's level is just how many of them
+        // are set — the bar is contiguous by construction.
+        let cell = &grid[cr * 8..(cr + 1) * 8];
+        for cc in 0..opts.width {
+            let filled = cell.iter().filter(|row| row[cc]).count();
+            if filled == 0 {
+                // A space, not U+2588's empty sibling: there isn't one. The
+                // braille blank (U+2800) is a glyph, this column is nothing.
+                out.push(' ');
+            } else {
+                // 1..=8 eighths -> U+2581..=U+2588, all assigned, so from_u32
+                // cannot return None. See the note in `braille` above.
+                #[expect(clippy::unwrap_used, reason = "value is a proven-valid scalar")]
+                out.push(char::from_u32(0x2580 + filled as u32).unwrap());
+            }
+        }
+        out.push('\n');
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,7 +198,7 @@ mod tests {
         Opts {
             width,
             height,
-            min: None,
+            min: Floor::Fixed(0.0),
             max,
             point,
         }
@@ -141,7 +208,7 @@ mod tests {
         Opts {
             width: 1,
             height: 1,
-            min: Some(min),
+            min: Floor::Fixed(min),
             max: Some(max),
             point: false,
         }
@@ -243,6 +310,65 @@ mod tests {
         assert_eq!(braille(&[Some(40.0), Some(40.0)], &band(40.0, 60.0)), "⠀\n");
         assert_eq!(braille(&[Some(50.0), Some(50.0)], &band(40.0, 60.0)), "⣤\n");
         assert_eq!(braille(&[Some(60.0), Some(60.0)], &band(40.0, 60.0)), "⣿\n");
+    }
+
+    fn auto_floor(width: usize) -> Opts {
+        Opts {
+            width,
+            height: 1,
+            min: Floor::Auto,
+            max: None,
+            point: false,
+        }
+    }
+
+    #[test]
+    fn auto_floor_starts_the_scale_at_the_window_minimum() {
+        // 40..60 with a zero floor spends the cell on the distance from zero;
+        // with an auto floor the same series uses the full height.
+        // Floor 0: 40 of 60 is 3 px of 4, 60 is 4 px -> both columns tall.
+        let fixed = braille(&[Some(40.0), Some(60.0)], &o(1, 1, None, false));
+        assert_eq!(fixed, "⣾\n");
+        // Floor 40: the first value sits on the floor and vanishes, the second
+        // gets the whole cell.
+        let auto = braille(&[Some(40.0), Some(60.0)], &auto_floor(1));
+        assert_eq!(auto, "⢸\n");
+    }
+
+    #[test]
+    fn auto_floor_on_a_flat_series_draws_nothing() {
+        // Every value equals the floor, so the span is zero: there is no
+        // variation to show, and a full cell would be a lie.
+        let out = braille(&[Some(7.0), Some(7.0)], &auto_floor(1));
+        assert_eq!(out, "⠀\n");
+    }
+
+    #[test]
+    fn auto_floor_over_an_empty_window_stays_blank() {
+        // The fold seeds at +inf with nothing to reduce, so the span is
+        // non-finite — the same degenerate path as having no data at all.
+        let out = braille(&[], &auto_floor(2));
+        assert_eq!(out, "⠀⠀\n");
+    }
+
+    #[test]
+    fn blocks_fill_one_eighth_per_level() {
+        for (value, expect) in [(0.0, " "), (1.0, "▁"), (4.0, "▄"), (8.0, "█")] {
+            let out = blocks(&[Some(value)], &o(1, 1, Some(8.0), false));
+            assert_eq!(out, format!("{expect}\n"), "value {value}");
+        }
+    }
+
+    #[test]
+    fn blocks_hold_one_value_per_character_not_two() {
+        // Braille packs two columns into a cell; blocks are one column wide,
+        // so the same width holds half as many values and the window keeps
+        // the last two rather than the last four.
+        let out = blocks(
+            &[Some(8.0), Some(8.0), Some(0.0), Some(4.0)],
+            &o(2, 1, Some(8.0), false),
+        );
+        assert_eq!(out, " ▄\n");
     }
 
     #[test]

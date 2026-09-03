@@ -14,8 +14,10 @@ the staged tree, not the working tree.
 
 ## Layout
 
-- `render.rs` — everything: tokens -> pixel grid -> string. Pure, no I/O, so
-  the whole drawing contract is testable from `#[cfg(test)]`.
+- `render.rs` — everything: tokens -> pixel grid -> string. `pixels` builds the
+  grid at whatever cell size the charset wants; `braille` and `blocks` are the
+  two conversions out of it. Pure, no I/O, so the whole drawing contract is
+  testable from `#[cfg(test)]`.
 - `main.rs` — argument parsing, stdin, and the write.
 
 ## Non-negotiables
@@ -43,6 +45,15 @@ the staged tree, not the working tree.
 - **Output goes through `write_all` + `flush`, with `BrokenPipe` as a clean
   exit.** `agrf | head` is normal usage, and the `print!` family unwraps the
   EPIPE write error into a panic.
+- **The block glyphs can only fill from the bottom, so `--point` has no block
+  rendering.** U+2581..U+2588 are eighths measured up from the baseline; there
+  is no glyph for a lone mark part way up a cell. The combination is refused at
+  the argument boundary rather than approximated, because the nearest drawable
+  thing is a bar, and a bar is the one shape point mode exists to avoid.
+- **An auto floor over a window with no finite values is degenerate, not an
+  error.** The fold seeds at `+inf`, so the span comes out non-finite and lands
+  in the same blank-graph path as having no data — which is why that path is
+  tested rather than guarded twice.
 - **`rust-version` in Cargo.toml and `toolchain:` in the msrv CI job move in
   the same commit.** Nothing checks that they agree. Raise the floor alone and
   the job keeps passing on the old toolchain — it still exists and still builds

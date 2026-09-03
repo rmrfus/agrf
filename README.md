@@ -87,11 +87,12 @@ Values come from positional args if given, otherwise from stdin
 | Flag               | Default | Meaning                                                     |
 |--------------------|---------|-------------------------------------------------------------|
 | `[VALUES]...`      | —       | numbers to plot; if omitted, read from stdin                |
-| `-w, --width <N>`  | `20`    | width in characters (holds `2*N` values)                    |
-| `-H, --height <N>` | `1`     | height in characters (4 px per char)                        |
-| `--min <F>`        | `0`     | Y-axis floor; values below are clamped                      |
+| `-w, --width <N>`  | `20`    | width in characters (holds `2*N` values; `N` with blocks)   |
+| `-H, --height <N>` | `1`     | height in characters (4 px per char; 8 with blocks)         |
+| `--min <F>\|auto`  | `0`     | Y-axis floor; values below are clamped, `auto` = window min |
 | `-m, --max <F>`    | auto    | Y-axis top; values above are clamped (window max)           |
 | `-p, --point`      | off     | draw only the marker at each value, no fill (default: bars) |
+| `--charset <C>`    | braille | `braille` (2 values/char) or `blocks` (1 value, 8 levels)   |
 
 Behavior worth knowing:
 
@@ -101,7 +102,12 @@ Behavior worth knowing:
   fewer → they sit on the left, blank on the right.
 - **Y range is `--min`..`--max`** (defaults `0`..window-max); out-of-range
   values clamp to it. For data that lives in a band — CPU temp at 40–80 °C —
-  set `--min` so the graph uses the full height instead of hugging the top.
+  set `--min`, or `--min auto` to let the window's own minimum be the floor,
+  so the graph uses the full height instead of hugging the top.
+- **`--charset blocks` is the no-braille fallback.** One value per character
+  over eight levels (`▁▂▃▄▅▆▇█`) instead of two values over four. Those glyphs
+  only fill from the bottom, so `--point` is refused with them rather than
+  drawn as something it isn't.
 - **Non-numeric tokens become gaps** (empty column), negatives vanish at the
   default floor of 0, and any value above the floor shows at least one pixel so
   small bars don't disappear.
