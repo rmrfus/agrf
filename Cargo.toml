@@ -23,8 +23,18 @@ clap = { version = "4", features = ["derive"] }
 unwrap_used = "warn"
 expect_used = "warn"
 panic = "warn"
+unreachable = "warn"
 todo = "warn"
 unimplemented = "warn"
+dbg_macro = "warn"
+# The four below turn house conventions into build failures rather than
+# things a careless edit can undo with a green CI: `exit` enforces the
+# ExitCode rule, `print_stdout` the "payload never goes through println!"
+# rule, and the two unsafe ones the SAFETY-comment rule.
+exit = "warn"
+print_stdout = "warn"
+undocumented_unsafe_blocks = "warn"
+multiple_unsafe_ops_per_block = "warn"
 
 [profile.release]
 lto = true
