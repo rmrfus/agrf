@@ -1,4 +1,5 @@
 use std::io::{self, Read, Write};
+use std::process::ExitCode;
 
 use clap::Parser;
 
@@ -36,7 +37,9 @@ struct Args {
     point: bool,
 }
 
-fn main() {
+// ExitCode rather than process::exit: exit terminates on the spot and skips
+// every destructor still on the stack — including the stdout lock held below.
+fn main() -> ExitCode {
     let args = Args::parse();
 
     // Bound the grid at the input boundary so render can't overflow usize or
@@ -49,14 +52,16 @@ fn main() {
         .is_none_or(|c| c > MAX_CELLS)
     {
         eprintln!("agrf: width*height must be <= {MAX_CELLS}");
-        std::process::exit(2);
+        // 2 is what clap exits with for a bad argument, and what the EXIT
+        // STATUS section of the man page promises for one.
+        return ExitCode::from(2);
     }
 
     let input = if args.values.is_empty() {
         let mut buf = String::new();
         if let Err(e) = io::stdin().read_to_string(&mut buf) {
             eprintln!("agrf: failed to read stdin: {e}");
-            std::process::exit(1);
+            return ExitCode::FAILURE;
         }
         buf
     } else {
@@ -82,7 +87,8 @@ fn main() {
     if let Err(e) = res {
         if e.kind() != io::ErrorKind::BrokenPipe {
             eprintln!("agrf: {e}");
-            std::process::exit(1);
+            return ExitCode::FAILURE;
         }
     }
+    ExitCode::SUCCESS
 }
