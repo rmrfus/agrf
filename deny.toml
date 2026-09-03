@@ -1,6 +1,14 @@
-# Advisories only. `cargo deny check advisories` reads the RustSec database and
-# covers what `cargo audit` does, so this is the one tool. [bans] and
-# [licenses] are for shipping to strangers and for legal review; this is a
-# personal one-binary tool with a single dependency.
+# `cargo deny check advisories sources` reads the RustSec database and covers
+# what `cargo audit` does, so this is the one tool. [bans] and [licenses] are
+# for shipping to strangers and for legal review; this is a personal one-binary
+# tool with a single dependency.
+#
+# Both settings below default to something laxer than the name suggests: a
+# yanked crate only warns, and `sources` is a separate check that has to be
+# named on the command line or the section never runs at all.
 [advisories]
 version = 2
+yanked = "deny"
+
+[sources]
+unknown-git = "deny"

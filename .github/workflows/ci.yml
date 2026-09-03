@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Advisories are the reason for the schedule: one published after the last
+  # commit is invisible until the next one, and this repo goes months without.
+  schedule:
+    - cron: '0 13 * * 1'
 
 permissions:
   contents: read
@@ -12,15 +16,15 @@ jobs:
   check:
     # Pure Rust with one dependency, so rustup plus a cache beats spinning up
     # nix here: nothing in this crate needs a pinned C library.
-    name: fmt · clippy · test
+    name: fmt · clippy · test · cross
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Add components
         run: rustup component add clippy rustfmt
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
 
       - name: Format
         run: cargo fmt --all --check
@@ -31,14 +35,41 @@ jobs:
       - name: Test
         run: cargo test --locked
 
+      # flake.nix claims aarch64-linux, and nothing else here builds it. An
+      # unbuilt architecture in `systems` is a promise no job keeps; check-only
+      # is cheap and catches the width/signedness class of breakage before a
+      # tag does.
+      - name: Cross-check aarch64
+        run: |
+          rustup target add aarch64-unknown-linux-gnu
+          cargo check --target aarch64-unknown-linux-gnu --all-targets --locked
+
+  msrv:
+    # rust-version is otherwise a claim nothing checks: nix gives whatever
+    # nixpkgs pins and the job above gives latest stable, so a floor that has
+    # drifted stays green until a stranger runs `cargo install --locked`.
+    name: msrv 1.85
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: dtolnay/rust-toolchain@bc540ba06a4ccee415bb241490e0b25ee8e7d315 # 1.85.0
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: msrv
+
+      - name: Check on the declared floor
+        run: cargo check --locked
+
   nix:
     # The checks whose tools live in the devShell, plus the flake itself.
     name: man · advisories · unused deps · package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
@@ -49,10 +80,12 @@ jobs:
       - name: Man page
         run: nix develop --command groff -man -Tutf8 -ww -z man/man1/agrf.1
 
-      # RustSec advisories against the committed lockfile. Covers what
-      # cargo-audit does, so this is the only scanner here.
+      # RustSec advisories against the committed lockfile — covers what
+      # cargo-audit does, so this is the only scanner here. `sources` is named
+      # explicitly because `check advisories` does not run it, which would
+      # leave the [sources] section of deny.toml as dead config.
       - name: Advisories
-        run: nix develop --command cargo deny check advisories
+        run: nix develop --command cargo deny check advisories sources
 
       # A dependency nothing imports is not a crash; it keeps appearing in the
       # advisory scan above for code that is no longer called, and can hold the
@@ -62,5 +95,7 @@ jobs:
 
       # Not just a local convenience: without this the flake rots quietly and
       # the breakage lands on whoever first runs `nix run github:rmrfus/agrf`.
+      # It also runs the suite a second time under doCheck, in a sandbox with
+      # no network and no $HOME.
       - name: Package
         run: nix build

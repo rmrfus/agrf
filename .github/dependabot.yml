@@ -1,0 +1,10 @@
+# Action pins are full commit SHAs, which is the only immutable ref GitHub
+# offers — and which nothing would ever bump by hand. Dependabot moves the SHA
+# and the trailing version comment together, so the pins stay current without
+# the rule living as prose in a skill file.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
