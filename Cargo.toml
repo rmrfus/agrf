@@ -1,7 +1,10 @@
 [package]
 name = "agrf"
 version = "0.3.1"
-edition = "2021"
+edition = "2024"
+# Our own floor, not a dependency's: edition 2024 needs 1.85. Without this a
+# stable-but-older toolchain fails on the edition key instead of saying so.
+rust-version = "1.85"
 description = "Stream of int/float to unicode braille graphs"
 homepage = "https://github.com/rmrfus/agrf"
 repository = "https://github.com/rmrfus/agrf"
