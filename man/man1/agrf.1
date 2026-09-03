@@ -1,4 +1,4 @@
-.TH AGRF 1 "2026-09-02" "agrf" "User Commands"
+.TH AGRF 1 "2026-09-03" "agrf" "User Commands"
 .SH NAME
 agrf \- stream of numbers to a braille unicode graph
 .SH SYNOPSIS
@@ -66,7 +66,10 @@ agrf \-p 3 7 2 9 5
 .EE
 .RE
 .SH EXIT STATUS
-Returns 0 on success, 1 if standard input cannot be read, and 2 on
-invalid arguments.
+Returns 0 on success, 1 on an I/O error (standard input cannot be read,
+or the output cannot be written), and 2 on invalid arguments. A closed
+output pipe, as in
+.BR "agrf | head" ,
+is not an error and returns 0.
 .SH SEE ALSO
 Project page: https://github.com/rmrfus/agrf

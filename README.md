@@ -39,7 +39,8 @@ environment.systemPackages = [ inputs.agrf.packages.${pkgs.system}.default ];
 
 ### With Cargo
 
-On any host with a Rust toolchain, no Nix required (builds locally):
+On any host with Rust 1.85 or newer, no Nix required (builds locally). The
+floor comes from edition 2024 and is checked in CI:
 
 ```sh
 cargo install --git https://github.com/rmrfus/agrf --locked
