@@ -141,15 +141,30 @@ A random walk, two chars tall:
 awk 'BEGIN{x=50;for(i=0;i<60;i++){x+=int(rand()*21)-10;if(x<0)x=0;if(x>100)x=100;print x}}' | agrf -w 30 -H 2
 ```
 
-Live ping latency, redrawn in place as each reply lands:
+Live ping latency, ten samples a second, redrawn in place as each reply lands:
 
 ```sh
-ping 1.1.1.1 | grep --line-buffered -oP 'time=\K[0-9.]+' | agrf -f -w 30
+fping -p 100 1.1.1.1 -lJ | jq '.resp.rtt' --unbuffered | agrf -f -H 5 -w 64
 ```
 
-`--line-buffered` matters: without it grep holds its output in a 4 KB buffer
-and the graph updates in bursts. The same applies to `awk` (`fflush()`) and to
-`stdbuf -oL` in front of anything else.
+### Buffering: the reason a live pipeline shows nothing
+
+**Every program in the pipe must be told to flush per line, or `-f` sits there
+looking broken.** When stdout is not a terminal, libc switches it from
+line-buffered to fully buffered (4 KB), so an upstream tool holds its output
+until that much has piled up — at one ping reply per 100 ms, minutes. Nothing
+reaches agrf, and agrf has nothing to draw.
+
+| tool            | flag                     |
+|-----------------|--------------------------|
+| `jq`            | `--unbuffered`           |
+| `grep`          | `--line-buffered`        |
+| `sed`           | `-u`                     |
+| `awk`           | call `fflush()` per line |
+| anything else   | `stdbuf -oL <cmd>`       |
+
+To find out who is holding the data, put `| cat` in front of agrf. If that
+prints nothing either, the culprit is upstream, not here.
 
 Temperatures in a narrow band, scaled to themselves, without braille:
 

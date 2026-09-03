@@ -38,7 +38,7 @@ Default: 1.
 Y\-axis minimum; values below are clamped. Default: 0. With
 .B auto
 the floor is the smallest value in the window, which spends the whole
-height on the variation rather than on the distance from zero \(em useful
+height on the variation rather than on the distance from zero \(en useful
 for data that lives in a band, such as a temperature between 40 and 60.
 Must be finite: a non\-numeric or infinite floor is rejected rather than
 silently producing a blank graph.
@@ -58,13 +58,31 @@ cursor to move and a reader wants the history. Values that scroll out of
 the window are discarded, so following an endless stream does not grow
 without bound. Cannot be combined with positional values, which are not a
 stream.
+.IP
+Every program upstream in the pipe must flush per line. When stdout is
+not a terminal, libc switches it from line\-buffered to fully buffered, so
+a tool that does not flush holds its output until 4 KB has accumulated \(en
+at ten samples a second, minutes \(en and
+.B \-\-follow
+sits there with nothing to draw. Use
+.BR "jq \-\-unbuffered" ,
+.BR "grep \-\-line\-buffered" ,
+.BR "sed \-u" ,
+.B fflush()
+in awk, or
+.B stdbuf \-oL
+in front of anything else. To find the culprit, put
+.B | cat
+in front of
+.BR agrf :
+if that prints nothing either, the buffering is upstream.
 .TP
 .BR \-\-charset " " braille | blocks
 Glyphs to draw with. Default:
 .BR braille ,
 which packs two values into each character (2 px wide by 4 px tall).
 .B blocks
-draws one value per character over eight vertical levels \(em half the
+draws one value per character over eight vertical levels \(en half the
 horizontal resolution for twice the vertical, and the fallback for a
 terminal whose font has no braille. Because the block glyphs can only
 express a fill from the bottom,
@@ -98,10 +116,10 @@ agrf \-p 3 7 2 9 5
 .EE
 .RE
 .PP
-Live ping latency, redrawn as each reply arrives:
+Live ping latency, ten samples a second, redrawn as each reply arrives:
 .RS
 .EX
-ping 1.1.1.1 | grep \-\-line\-buffered \-oP 'time=\eK[0-9.]+' | agrf \-f \-w 30
+fping \-p 100 1.1.1.1 \-lJ | jq '.resp.rtt' \-\-unbuffered | agrf \-f \-H 5 \-w 64
 .EE
 .RE
 .PP
@@ -112,9 +130,9 @@ agrf \-\-min auto \-\-charset blocks 41 43 47 44 52 49
 .EE
 .RE
 .SH EXIT STATUS
-Returns 0 on success \(em including
+Returns 0 on success \(en including
 .B \-\-follow
-reaching end\-of\-file \(em 1 on an I/O error (standard input cannot be read,
+reaching end\-of\-file \(en 1 on an I/O error (standard input cannot be read,
 or the output cannot be written), and 2 on invalid arguments. A closed
 output pipe, as in
 .BR "agrf | head" ,
