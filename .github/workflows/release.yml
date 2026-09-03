@@ -38,8 +38,11 @@ jobs:
       # tool's own dependency tree on every run — a release job that breaks
       # with no change on this side. cargo-zigbuild finds zig through
       # `python -m ziglang`, which is why the pip package is enough.
+      # Pinned for the same reason cargo installs carry --locked: an unpinned
+      # installer re-resolves on every run, so a release job can break with no
+      # change on this side. 0.16.0 is what the v0.3.2 release built with.
       - name: Install zig
-        run: pip install ziglang
+        run: pip install ziglang==0.16.0
 
       - uses: taiki-e/install-action@e67fa11c4b9316fa714ddf0abed07a0c3143b95b # v2
         with:
