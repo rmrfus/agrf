@@ -1,6 +1,6 @@
 [package]
 name = "agrf"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 # Our own floor: edition 2024 needs 1.85, and clap 4.6 declares the same. It
 # does not improve the error an older toolchain gives — the edition is rejected
