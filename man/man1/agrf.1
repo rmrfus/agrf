@@ -27,7 +27,8 @@ from
 .BR \-w ", " \-\-width " \fIN\fR"
 Output width in characters; holds 2*\fIN\fR values, or \fIN\fR with
 .BR \-\-charset " " blocks .
-Default: 20.
+Default: 20. Must be at least 1, and width times height must not exceed
+4,000,000.
 .TP
 .BR \-H ", " \-\-height " \fIN\fR"
 Output height in characters; 4 pixels per character, or 8 with
@@ -45,6 +46,7 @@ silently producing a blank graph.
 .TP
 .BR \-m ", " \-\-max " \fIF\fR"
 Y\-axis maximum; values above are clamped. Default: auto (window max).
+Must be finite.
 .TP
 .BR \-p ", " \-\-point
 Point mode: draw only the marker at each value, without filling

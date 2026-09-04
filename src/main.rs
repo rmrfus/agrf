@@ -30,7 +30,9 @@ struct Args {
     min: Floor,
 
     /// Y-axis maximum; values above are clamped. Default: auto (window max).
-    #[arg(short, long)]
+    /// Must be finite, like --min: a non-finite ceiling makes the span
+    /// non-finite and the graph comes out blank with no indication of why.
+    #[arg(short, long, value_parser = parse_max)]
     max: Option<f64>,
 
     /// Point mode: draw only the marker at each value, no fill.
@@ -67,6 +69,13 @@ fn parse_floor(s: &str) -> Result<Floor, String> {
     }
 }
 
+fn parse_max(s: &str) -> Result<f64, String> {
+    match s.parse::<f64>() {
+        Ok(v) if v.is_finite() => Ok(v),
+        _ => Err(format!("expected a finite number, got `{s}`")),
+    }
+}
+
 fn parse_charset(s: &str) -> Result<Charset, String> {
     match s {
         "braille" => Ok(Charset::Braille),
@@ -79,6 +88,14 @@ fn parse_charset(s: &str) -> Result<Charset, String> {
 // every destructor still on the stack — including the stdout lock held below.
 fn main() -> ExitCode {
     let args = Args::parse();
+
+    // A zero-sized graph draws nothing with a success exit, which downstream
+    // reads as "no data" rather than "bad arguments". Reject it here, with the
+    // usage-error code the man page promises for one.
+    if args.width == 0 || args.height == 0 {
+        eprintln!("agrf: width and height must be >= 1");
+        return ExitCode::from(2);
+    }
 
     // Bound the grid at the input boundary so render can't overflow usize or
     // allocate absurdly. Capping the product covers both a huge single side and

@@ -6,7 +6,7 @@
 //! marker, so they cover these functions. The helper below is not a test
 //! function, which is why it returns `Result` instead of unwrapping.
 
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::process::{Command, Stdio};
 
 struct Run {
@@ -105,9 +105,71 @@ fn point_mode_with_blocks_is_rejected_not_approximated() -> io::Result<()> {
 }
 
 #[test]
+fn non_finite_max_is_rejected_not_drawn_blank() -> io::Result<()> {
+    // A non-finite ceiling makes the span non-finite and the graph comes out
+    // blank with no indication of why — the same reason --min rejects one.
+    // The `=` form: `-inf` through a space never reaches the parser, clap
+    // reads it as short flags first (exit 2 either way, but a different
+    // message).
+    for max in ["--max=inf", "--max=-inf", "--max=NaN"] {
+        let got = run(&[max, "1", "2"], "")?;
+        assert_eq!(got.code, Some(2), "max={max}");
+        assert!(
+            got.stderr.contains("finite"),
+            "max={max} stderr: {}",
+            got.stderr
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn zero_width_or_height_is_rejected_not_drawn_empty() -> io::Result<()> {
+    // A zero-sized graph draws nothing with a success exit, which reads as
+    // "no data" rather than "bad arguments".
+    for args in [vec!["-w", "0"], vec!["-H", "0"]] {
+        let got = run(&args, "1 2 3\n")?;
+        assert_eq!(got.code, Some(2), "args={args:?}");
+        assert!(
+            got.stderr.contains(">= 1"),
+            "args={args:?} stderr: {}",
+            got.stderr
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn a_closed_output_pipe_is_not_an_error() -> io::Result<()> {
-    // `agrf | head` is normal usage; the documented exit status says 0.
-    let got = run(&["-w", "4"], "1 2 3 4\n")?;
-    assert_eq!(got.code, Some(0), "stderr: {}", got.stderr);
+    // `agrf | head` is normal usage; the documented exit status says 0. The
+    // output has to exceed the pipe buffer (~64 KB) so the child actually
+    // blocks on the write instead of finishing into the buffer before the read
+    // end below is closed — a small frame would pass without ever seeing EPIPE.
+    let mut child = Command::new(env!("CARGO_BIN_EXE_agrf"))
+        .args(["-w", "1000", "-H", "100", "-m", "8"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let mut pipe = child
+        .stdin
+        .take()
+        .ok_or_else(|| io::Error::other("child stdin was not piped"))?;
+    // 2000 values fill the 1000-char window; the frame itself is ~300 KB.
+    pipe.write_all("8 ".repeat(2000).as_bytes())?;
+    drop(pipe); // EOF
+
+    // Reader goes away while the child is still writing: every further write
+    // fails with EPIPE, which must be a clean exit rather than a panic.
+    drop(child.stdout.take());
+    let status = child.wait()?;
+
+    let mut stderr = String::new();
+    if let Some(mut err) = child.stderr.take() {
+        err.read_to_string(&mut stderr)?;
+    }
+    assert_eq!(status.code(), Some(0), "stderr: {stderr}");
+    assert!(!stderr.contains("panicked"), "stderr: {stderr}");
     Ok(())
 }

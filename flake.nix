@@ -8,6 +8,10 @@
 
   outputs = { self, nixpkgs }:
     let
+      # Linux only, deliberately: CI runs ubuntu-latest and `nix build` is the
+      # step that keeps this list honest. A darwin entry no job builds is a
+      # promise no job keeps — the same unverified-promise rule the cross-check
+      # job states for aarch64.
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAll = f: nixpkgs.lib.genAttrs systems
         (system: f nixpkgs.legacyPackages.${system});

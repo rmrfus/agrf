@@ -69,11 +69,19 @@ and separate.
   error.** The fold seeds at `+inf`, so the span comes out non-finite and lands
   in the same blank-graph path as having no data — which is why that path is
   tested rather than guarded twice.
-- **`rust-version` in Cargo.toml and `toolchain:` in the msrv CI job move in
-  the same commit.** Nothing checks that they agree. Raise the floor alone and
-  the job keeps passing on the old toolchain — it still exists and still builds
-  — so it goes on verifying a floor the crate no longer claims, which is the
-  one failure that job exists to prevent.
+- **The MSRV floor lives only in `rust-version`; the msrv CI job reads it out
+  of `Cargo.toml` instead of repeating it.** A second copy in the workflow
+  drifts silently: raise the floor and the job keeps passing on the old
+  toolchain — it still exists and still builds — so it goes on verifying a
+  floor the crate no longer claims, which is the one failure that job exists
+  to prevent. With the `grep` step there is nothing to keep in step.
 - **`width * height` is capped at the argument boundary, before render.** The
   grid is allocated eagerly, so an unchecked product is an OOM (or a `usize`
   overflow) driven straight from argv.
+- **`--max` must be finite, like `--min`.** A non-finite ceiling makes the span
+  non-finite and the graph comes out blank with no indication of why — the same
+  silent-blank failure a non-finite floor is already rejected for.
+- **Zero width or height is a usage error, not an empty graph.** A zero-sized
+  frame draws nothing with a success exit, which reads as "no data" rather than
+  "bad arguments" — and the product cap above passes zero, so without the
+  explicit `>= 1` check this case looks deliberately allowed.
