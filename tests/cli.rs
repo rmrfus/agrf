@@ -105,6 +105,24 @@ fn point_mode_with_blocks_is_rejected_not_approximated() -> io::Result<()> {
 }
 
 #[test]
+fn invert_flag_hangs_the_bars_from_the_top() -> io::Result<()> {
+    // The renderer is unit-tested; this pins the flag reaching it. 2 of 4 px
+    // fills the upper half of the cell instead of the lower.
+    let got = run(&["-i", "-w", "1", "-m", "4", "2", "2"], "")?;
+    assert_eq!(got.code, Some(0), "stderr: {}", got.stderr);
+    assert_eq!(got.stdout, "⠛\n");
+    Ok(())
+}
+
+#[test]
+fn inverted_blocks_are_rejected_not_approximated() -> io::Result<()> {
+    let got = run(&["-i", "--charset", "blocks", "1", "2"], "")?;
+    assert_eq!(got.code, Some(2));
+    assert!(got.stderr.contains("braille"), "stderr: {}", got.stderr);
+    Ok(())
+}
+
+#[test]
 fn non_finite_max_is_rejected_not_drawn_blank() -> io::Result<()> {
     // A non-finite ceiling makes the span non-finite and the graph comes out
     // blank with no indication of why — the same reason --min rejects one.

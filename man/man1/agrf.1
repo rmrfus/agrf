@@ -1,4 +1,4 @@
-.TH AGRF 1 "2026-09-03" "agrf" "User Commands"
+.TH AGRF 1 "2026-10-21" "agrf" "User Commands"
 .SH NAME
 agrf \- numbers in, braille sparkline out
 .SH SYNOPSIS
@@ -52,6 +52,18 @@ Must be finite.
 Point mode: draw only the marker at each value, without filling
 underneath. Default: bars.
 .TP
+.BR \-i ", " \-\-invert
+Mirror the graph top to bottom: the floor is the top edge, bars hang down
+from it, and in point mode the maximum sits on the bottom row. Meant for
+the lower half of a pair that shares a baseline, such as upload drawn
+under download. Each run scales to its own window, so give both the same
+.B \-\-max
+and the same fixed
+.B \-\-min
+(not
+.BR auto ),
+or the two halves are not comparable.
+.TP
 .BR \-f ", " \-\-follow
 Follow standard input: redraw after every line instead of reading to
 end\-of\-file first. On a terminal each frame overwrites the previous one;
@@ -87,9 +99,11 @@ which packs two values into each character (2 px wide by 4 px tall).
 draws one value per character over eight vertical levels \(en half the
 horizontal resolution for twice the vertical, and the fallback for a
 terminal whose font has no braille. Because the block glyphs can only
-express a fill from the bottom,
+express a fill from the bottom, neither
 .B \-\-point
-cannot be combined with them and the pair is rejected.
+nor
+.B \-\-invert
+can be combined with them, and either pair is rejected.
 .TP
 .BR \-h ", " \-\-help
 Print help and exit.
@@ -129,6 +143,15 @@ A band of temperatures, scaled to its own range, in blocks:
 .RS
 .EX
 agrf \-\-min auto \-\-charset blocks 41 43 47 44 52 49
+.EE
+.RE
+.PP
+Download and upload as a mirrored pair, in Mbit/s on one gigabit scale,
+download above and upload hanging under it:
+.RS
+.EX
+agrf \-w 30 \-m 1000 < down
+agrf \-w 30 \-m 1000 \-i < up
 .EE
 .RE
 .SH EXIT STATUS

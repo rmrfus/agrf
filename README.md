@@ -92,6 +92,7 @@ Values come from positional args if given, otherwise from stdin
 | `--min <F>\|auto`  | `0`     | Y-axis floor; values below are clamped, `auto` = window min |
 | `-m, --max <F>`    | auto    | Y-axis top; values above are clamped (window max)           |
 | `-p, --point`      | off     | draw only the marker at each value, no fill (default: bars) |
+| `-i, --invert`     | off     | mirror top to bottom: bars hang down from the top edge      |
 | `--charset <C>`    | braille | `braille` (2 values/char) or `blocks` (1 value, 8 levels)   |
 | `-f, --follow`     | off     | redraw after every line of stdin instead of waiting for EOF |
 
@@ -112,8 +113,12 @@ Behavior worth knowing:
   values that scroll off the left are dropped.
 - **`--charset blocks` is the no-braille fallback.** One value per character
   over eight levels (`▁▂▃▄▅▆▇█`) instead of two values over four. Those glyphs
-  only fill from the bottom, so `--point` is refused with them rather than
-  drawn as something it isn't.
+  only fill from the bottom, so `--point` and `--invert` are refused with them
+  rather than drawn as something they aren't.
+- **`-i, --invert` hangs the bars from the top.** Two runs make a mirrored
+  pair on a shared baseline — download upright, upload under it. Each run
+  scales to its own window, so give both the same `--max` and the same fixed
+  `--min` (not `auto`), or the halves don't compare.
 - **Non-numeric tokens become gaps** (empty column), negatives vanish at the
   default floor of 0, and any value above the floor shows at least one pixel so
   small bars don't disappear.
@@ -178,6 +183,14 @@ variation shows (0-based would glue it to the top):
 ```sh
 for _ in $(seq 60); do awk '{print $1/1000}' /sys/class/thermal/thermal_zone0/temp; sleep 1; done \
   | agrf -w 30 --min 40 --max 90
+```
+
+Traffic as a mirrored pair, in Mbit/s on one gigabit scale — download above,
+upload hanging under it:
+
+```sh
+agrf -w 30 -m 1000 < down
+agrf -w 30 -m 1000 -i < up
 ```
 
 ## License

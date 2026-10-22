@@ -39,6 +39,11 @@ struct Args {
     #[arg(short, long)]
     point: bool,
 
+    /// Invert: the floor is the top edge and bars hang down from it — e.g.
+    /// upload under a download graph. Braille only.
+    #[arg(short, long)]
+    invert: bool,
+
     /// Glyphs to draw with: braille packs two values per character, blocks
     /// are the fallback where the font has no braille.
     #[arg(long, default_value = "braille", value_parser = parse_charset)]
@@ -120,6 +125,15 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
 
+    // The same wall from the other side: a hanging bar is a fill from the top.
+    // The main block range has only two top-anchored glyphs (U+2594, U+2580);
+    // the other eighths are in Symbols for Legacy Computing, which a font
+    // without braille is not going to have either.
+    if args.invert && args.charset == Charset::Blocks {
+        eprintln!("agrf: --invert needs braille; blocks can only fill from the bottom");
+        return ExitCode::from(2);
+    }
+
     // Following means reading forever, which positional values cannot do.
     // Silently ignoring the flag would leave the user waiting for a redraw
     // that is never coming.
@@ -134,6 +148,7 @@ fn main() -> ExitCode {
         min: args.min,
         max: args.max,
         point: args.point,
+        invert: args.invert,
     };
 
     if args.follow {

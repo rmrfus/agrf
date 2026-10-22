@@ -13,7 +13,8 @@
 //!
 //! The block charset draws the same pixel grid at one column by eight rows per
 //! character, using U+2581..U+2588. Those glyphs can only express a fill from
-//! the bottom, which is why point mode has no block rendering.
+//! the bottom, which is why point mode and inverted mode have no block
+//! rendering.
 
 /// Pixels per output character, (width, height). One value occupies one pixel
 /// column, so the first number is also how many values a character holds —
@@ -48,6 +49,9 @@ pub struct Opts {
     pub min: Floor,
     pub max: Option<f64>,
     pub point: bool,
+    /// Mirror the graph top to bottom: the floor is the top edge and bars hang
+    /// from it.
+    pub invert: bool,
 }
 
 /// Split input on whitespace and parse each token as f64.
@@ -61,7 +65,8 @@ pub fn parse(input: &str) -> Vec<Option<f64>> {
 }
 
 /// Build the pixel grid, `cell_w` x `cell_h` pixels per output character.
-/// Row 0 is the top. Returns an empty grid when no rows were asked for.
+/// Row 0 is the top, after `invert` has been applied. Returns an empty grid
+/// when no rows were asked for.
 fn pixels(values: &[Option<f64>], opts: &Opts, cell_w: usize, cell_h: usize) -> Vec<Vec<bool>> {
     let rows_px = opts.height * cell_h;
     let cols_px = opts.width * cell_w;
@@ -124,6 +129,13 @@ fn pixels(values: &[Option<f64>], opts: &Opts, cell_w: usize, cell_h: usize) -> 
             }
         }
     }
+
+    // Flip the whole grid, not each character row: with a graph more than one
+    // character tall, a per-cell flip would hang every row's slice of the bar
+    // from that row's own top edge and tear the bar into stripes.
+    if opts.invert {
+        grid.reverse();
+    }
     grid
 }
 
@@ -164,9 +176,9 @@ pub fn braille(values: &[Option<f64>], opts: &Opts) -> String {
 /// characters across holds `width` values: half the horizontal resolution of
 /// braille for twice the vertical.
 ///
-/// Bar mode only. U+2581..U+2588 can express a fill from the bottom and
-/// nothing else, so a lone marker has no glyph — `point` is rejected before
-/// this is called.
+/// Upright bars only. U+2581..U+2588 can express a fill from the bottom and
+/// nothing else, so neither a lone marker nor a bar hanging from the top has a
+/// glyph among them — `point` and `invert` are rejected before this is called.
 pub fn blocks(values: &[Option<f64>], opts: &Opts) -> String {
     let grid = pixels(values, opts, BLOCKS_CELL.0, BLOCKS_CELL.1);
     if grid.is_empty() {
@@ -208,6 +220,7 @@ mod tests {
             min: Floor::Fixed(0.0),
             max,
             point,
+            invert: false,
         }
     }
 
@@ -218,6 +231,7 @@ mod tests {
             min: Floor::Fixed(min),
             max: Some(max),
             point: false,
+            invert: false,
         }
     }
 
@@ -326,6 +340,7 @@ mod tests {
             min: Floor::Auto,
             max: None,
             point: false,
+            invert: false,
         }
     }
 
@@ -376,6 +391,62 @@ mod tests {
             &o(2, 1, Some(8.0), false),
         );
         assert_eq!(out, " ▄\n");
+    }
+
+    fn inverted(opts: Opts) -> Opts {
+        Opts {
+            invert: true,
+            ..opts
+        }
+    }
+
+    #[test]
+    fn inverted_bar_hangs_from_the_top() {
+        // value 2 of max 4 -> 2 px of 4, upper half instead of lower.
+        let out = braille(
+            &[Some(2.0), Some(2.0)],
+            &inverted(o(1, 1, Some(4.0), false)),
+        );
+        assert_eq!(out, "⠛\n"); // dots 1,2,4,5
+    }
+
+    #[test]
+    fn inverted_tiny_value_shows_one_pixel_at_the_top() {
+        let out = braille(
+            &[Some(1.0), Some(1.0)],
+            &inverted(o(1, 1, Some(100.0), false)),
+        );
+        assert_eq!(out, "⠉\n"); // dots 1,4
+    }
+
+    #[test]
+    fn inverted_zero_stays_empty() {
+        let out = braille(
+            &[Some(0.0), Some(0.0)],
+            &inverted(o(1, 1, Some(100.0), false)),
+        );
+        assert_eq!(out, "⠀\n");
+    }
+
+    #[test]
+    fn inverted_bar_hangs_from_the_top_of_the_graph_not_of_each_row() {
+        // 2 of 8 px over two character rows: the bar is the top two pixel rows
+        // of the whole graph, and the lower character row stays blank.
+        let upright = braille(&[Some(2.0), Some(2.0)], &o(1, 2, Some(8.0), false));
+        assert_eq!(upright, "⠀\n⣤\n");
+        let out = braille(
+            &[Some(2.0), Some(2.0)],
+            &inverted(o(1, 2, Some(8.0), false)),
+        );
+        assert_eq!(out, "⠛\n⠀\n");
+    }
+
+    #[test]
+    fn inverted_point_puts_the_floor_on_top_and_max_at_the_bottom() {
+        let floor = braille(&[Some(0.0), Some(0.0)], &inverted(o(1, 1, Some(1.0), true)));
+        assert_eq!(floor, "⠉\n");
+        let max = braille(&[Some(1.0), Some(1.0)], &inverted(o(1, 1, Some(1.0), true)));
+        assert_eq!(max, "⣀\n");
     }
 
     #[test]

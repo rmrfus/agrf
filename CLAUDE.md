@@ -60,11 +60,20 @@ and separate.
 - **The follow buffer is trimmed to the window on every line.** Dropping values
   that have scrolled off is not tidiness — it is the difference between a tool
   that can watch a stream for a week and one that is an OOM with a countdown.
-- **The block glyphs can only fill from the bottom, so `--point` has no block
-  rendering.** U+2581..U+2588 are eighths measured up from the baseline; there
-  is no glyph for a lone mark part way up a cell. The combination is refused at
-  the argument boundary rather than approximated, because the nearest drawable
-  thing is a bar, and a bar is the one shape point mode exists to avoid.
+- **The block glyphs can only fill from the bottom, so `--point` and
+  `--invert` have no block rendering.** U+2581..U+2588 are eighths measured up
+  from the baseline. The glyphs the other two shapes need — a lone eighth part
+  way up a cell, an eighth hanging from the top — exist only in Symbols for
+  Legacy Computing (U+1FB76.., U+1FB82..; of the hanging ones, just U+2594 and
+  U+2580 are in the main block range), and a font without braille, the one
+  `blocks` exists for, lacks those too. So both combinations are refused at the
+  argument boundary rather than approximated: the nearest drawable point is a
+  bar, the one shape point mode exists to avoid, and `blocks` fills every cell
+  from the bottom whatever the grid says, so the partial cell of an inverted
+  bar would be drawn the wrong way up.
+- **`--invert` flips the whole pixel grid, not each character row.** A per-row
+  flip passes every test at `-H 1` and tears a taller bar into stripes hanging
+  from each row's own top edge; the two-row test pins the whole-grid flip.
 - **An auto floor over a window with no finite values is degenerate, not an
   error.** The fold seeds at `+inf`, so the span comes out non-finite and lands
   in the same blank-graph path as having no data — which is why that path is
