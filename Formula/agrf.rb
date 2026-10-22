@@ -1,8 +1,8 @@
 class Agrf < Formula
   desc "Numbers in, braille sparkline out"
   homepage "https://github.com/rmrfus/agrf"
-  url "https://github.com/rmrfus/agrf/archive/refs/tags/v0.5.0.tar.gz"
-  sha256 "22697996de35e36b4e30679e5498477ec17cea3d4c92f5592a92936945f8393f"
+  url "https://github.com/rmrfus/agrf/archive/refs/tags/v0.5.1.tar.gz"
+  sha256 "ff870db36f56386fac77499837a8ba49cb7e736416e879c953750672df278a64"
   license "MIT"
 
   depends_on "rust" => :build
