@@ -30,7 +30,14 @@ fn run(args: &[&str], stdin: &str) -> io::Result<Run> {
         .stdin
         .take()
         .ok_or_else(|| io::Error::other("child stdin was not piped"))?;
-    pipe.write_all(stdin.as_bytes())?;
+    // A child that refuses its arguments exits without reading stdin, and if
+    // it gets there before this write, the write fails with EPIPE. That is a
+    // race the tests below do not care about (~1 run in 300, more on a loaded
+    // CI runner); the exit code and output still decide the verdict.
+    match pipe.write_all(stdin.as_bytes()) {
+        Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {}
+        res => res?,
+    }
     drop(pipe); // EOF, or the child follows forever
 
     let out = child.wait_with_output()?;
